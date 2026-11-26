@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- PLACEHOLDER Android 13+ themed (monochrome) icon (plan Q5). Only the alpha channel is used by
+       the launcher, so the score is cut out of the loaf with a mask. Same geometry and scale as
+       adaptive-icon.svg. -->
+  <title>Sourdough Assistant</title>
+  <defs>
+    <mask id="score-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+      <rect width="1024" height="1024" fill="#FFFFFF"/>
+      <path fill="none" stroke="#000000" stroke-width="40" stroke-linecap="round" d="M360 560 C424 456 540 410 660 432"/>
+    </mask>
+  </defs>
+  <g transform="translate(512 512) scale(0.74) translate(-512 -512)">
+    <g transform="translate(0 -22)">
+      <path fill="#000000" mask="url(#score-cut)" d="M262 712 C232 712 222 694 224 668 C238 462 366 300 512 300 C658 300 786 462 800 668 C802 694 792 712 762 712 Z"/>
+      <rect x="192" y="740" width="640" height="28" rx="14" fill="#000000"/>
+    </g>
+  </g>
+</svg>

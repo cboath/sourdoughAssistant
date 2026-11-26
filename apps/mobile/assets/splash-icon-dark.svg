@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- PLACEHOLDER splash image, DARK (plan Q5). Transparent; dark splash background comes from config
+       (expo-splash-screen dark.backgroundColor = #14110E, night950).
+       Loaf crust300 #F0A46A (dark accent), score #4A2A12 (dark accentContainer), board night700 #3A332C. -->
+  <title>Sourdough Assistant</title>
+  <g transform="translate(512 512) scale(0.8) translate(-512 -512)">
+    <g transform="translate(0 -22)">
+      <path fill="#F0A46A" d="M262 712 C232 712 222 694 224 668 C238 462 366 300 512 300 C658 300 786 462 800 668 C802 694 792 712 762 712 Z"/>
+      <path fill="none" stroke="#4A2A12" stroke-width="40" stroke-linecap="round" d="M360 560 C424 456 540 410 660 432"/>
+      <rect x="192" y="740" width="640" height="28" rx="14" fill="#3A332C"/>
+    </g>
+  </g>
+</svg>

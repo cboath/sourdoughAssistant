@@ -1,0 +1,245 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`migrate produces the committed schema 1`] = `
+"index bake_item_bake_idx
+CREATE INDEX bake_item_bake_idx ON bake_item (bake_id, position) WHERE deleted_at IS NULL
+
+index bake_status_idx
+CREATE INDEX bake_status_idx ON bake (status, planned_ready_at) WHERE deleted_at IS NULL
+
+index bake_step_key_uq
+CREATE UNIQUE INDEX bake_step_key_uq ON bake_step (bake_id, step_key)
+
+index bake_step_time_idx
+CREATE INDEX bake_step_time_idx ON bake_step (bake_id, planned_start_at)
+
+index pantry_item_name_idx
+CREATE INDEX pantry_item_name_idx ON pantry_item (name COLLATE NOCASE) WHERE deleted_at IS NULL
+
+index pantry_item_seed_key_uq
+CREATE UNIQUE INDEX pantry_item_seed_key_uq ON pantry_item (seed_key) WHERE seed_key IS NOT NULL
+
+index price_history_item_idx
+CREATE INDEX price_history_item_idx ON price_history (pantry_item_id, priced_at DESC, created_at DESC)
+
+index recipe_ingredient_pantry_idx
+CREATE INDEX recipe_ingredient_pantry_idx ON recipe_ingredient (pantry_item_id) WHERE deleted_at IS NULL
+
+index recipe_ingredient_recipe_idx
+CREATE INDEX recipe_ingredient_recipe_idx ON recipe_ingredient (recipe_id, position) WHERE deleted_at IS NULL
+
+index recipe_list_idx
+CREATE INDEX recipe_list_idx ON recipe (favorite DESC, name COLLATE NOCASE) WHERE deleted_at IS NULL
+
+index recipe_seed_key_uq
+CREATE UNIQUE INDEX recipe_seed_key_uq ON recipe (seed_key) WHERE seed_key IS NOT NULL
+
+index step_recipe_idx
+CREATE INDEX step_recipe_idx ON step (recipe_id, position) WHERE deleted_at IS NULL
+
+table _migrations
+CREATE TABLE _migrations (
+  version     INTEGER PRIMARY KEY NOT NULL,
+  name        TEXT    NOT NULL,
+  applied_at  TEXT    NOT NULL
+) STRICT
+
+table app_meta
+CREATE TABLE app_meta (            -- device-local key/value; never backed up or synced
+  key    TEXT PRIMARY KEY NOT NULL, -- 'seedVersion', 'lastReconcileAt', 'lastTimeZone', 'installId'
+  value  TEXT NOT NULL
+) STRICT
+
+table bake
+CREATE TABLE bake (
+  id                  TEXT    PRIMARY KEY NOT NULL,
+  status              TEXT    NOT NULL CHECK (status IN ('scheduled','active','completed','cancelled')),
+  mode                TEXT    NOT NULL CHECK (mode IN ('backward','forward')),
+  requested_ready_at  TEXT    NULL,                 -- what the user asked for (backward mode)
+  original_ready_at   TEXT    NOT NULL,             -- plan at scheduling time, never updated
+  planned_ready_at    TEXT    NOT NULL,             -- current plan (updated by recompute)
+  time_zone           TEXT    NOT NULL,             -- IANA zone at scheduling (record only, ADR 0005)
+  kitchen_temp_c      REAL    NULL CHECK (kitchen_temp_c IS NULL OR kitchen_temp_c BETWEEN 10 AND 40),
+  oven_capacity       INTEGER NOT NULL CHECK (oven_capacity BETWEEN 1 AND 12),
+  reheat_gap_min      INTEGER NOT NULL DEFAULT 0 CHECK (reheat_gap_min BETWEEN 0 AND 120),
+  heads_up_min        INTEGER NOT NULL CHECK (heads_up_min BETWEEN 0 AND 120),  -- snapshot of settings
+  currency_code       TEXT    NOT NULL CHECK (length(currency_code) = 3),
+  oven_slots_json     TEXT    NOT NULL DEFAULT '[]' CHECK (json_valid(oven_slots_json)),
+  notes               TEXT    NOT NULL DEFAULT '' CHECK (length(notes) <= 10000),
+  started_at          TEXT    NULL,
+  completed_at        TEXT    NULL,
+  cancelled_at        TEXT    NULL,
+  created_at          TEXT    NOT NULL,
+  updated_at          TEXT    NOT NULL,
+  deleted_at          TEXT    NULL
+) STRICT
+
+table bake_item
+CREATE TABLE bake_item (
+  id                    TEXT    PRIMARY KEY NOT NULL,
+  bake_id               TEXT    NOT NULL REFERENCES bake(id),
+  recipe_id             TEXT    NULL REFERENCES recipe(id),   -- provenance only; the snapshot is authoritative
+  position              INTEGER NOT NULL CHECK (position >= 0),
+  loaves                INTEGER NOT NULL CHECK (loaves BETWEEN 1 AND 50),
+  scale_factor          REAL    NOT NULL CHECK (scale_factor > 0), -- loaves / snapshot.yieldLoaves
+  recipe_snapshot_json  TEXT    NOT NULL CHECK (json_valid(recipe_snapshot_json)),
+  cost_snapshot_json    TEXT    NULL     CHECK (cost_snapshot_json IS NULL OR json_valid(cost_snapshot_json)),
+  created_at            TEXT    NOT NULL,
+  updated_at            TEXT    NOT NULL,
+  deleted_at            TEXT    NULL
+) STRICT
+
+table bake_step
+CREATE TABLE bake_step (
+  id                         TEXT    PRIMARY KEY NOT NULL,
+  bake_id                    TEXT    NOT NULL REFERENCES bake(id),
+  bake_item_id               TEXT    NULL REFERENCES bake_item(id),  -- NULL for bake-wide steps (merged preheat, reheat)
+  step_key                   TEXT    NOT NULL,                       -- ADR 0009 §8; stable across recomputes
+  source_step_id             TEXT    NULL,                           -- step id inside the snapshot
+  slot_index                 INTEGER NULL CHECK (slot_index IS NULL OR slot_index >= 1),
+  position                   INTEGER NOT NULL,                       -- order on the merged timeline at creation
+  name                       TEXT    NOT NULL,
+  kind                       TEXT    NOT NULL,
+  is_alongside               INTEGER NOT NULL DEFAULT 0 CHECK (is_alongside IN (0,1)),
+  duration_min               INTEGER NOT NULL CHECK (duration_min >= 0),
+  duration_source            TEXT    NOT NULL CHECK (duration_source IN ('default','temperature','user','derived')),
+  min_min                    INTEGER NOT NULL,
+  max_min                    INTEGER NOT NULL,
+  original_planned_start_at  TEXT    NOT NULL,
+  planned_start_at           TEXT    NOT NULL,
+  planned_end_at             TEXT    NOT NULL,
+  actual_start_at            TEXT    NULL,
+  actual_end_at              TEXT    NULL,
+  status                     TEXT    NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','active','done','skipped')),
+  inferred_done              INTEGER NOT NULL DEFAULT 0 CHECK (inferred_done IN (0,1)),
+  fold_count                 INTEGER NULL,
+  fold_interval_min          INTEGER NULL,
+  folds_done                 INTEGER NOT NULL DEFAULT 0,
+  fold_times_json            TEXT    NOT NULL DEFAULT '[]' CHECK (json_valid(fold_times_json)), -- ISO strings of actual folds
+  notify                     INTEGER NOT NULL DEFAULT 1 CHECK (notify IN (0,1)),
+  created_at                 TEXT    NOT NULL,
+  updated_at                 TEXT    NOT NULL,
+  deleted_at                 TEXT    NULL
+) STRICT
+
+table pantry_item
+CREATE TABLE pantry_item (
+  id                   TEXT    PRIMARY KEY NOT NULL,
+  name                 TEXT    NOT NULL CHECK (length(trim(name)) BETWEEN 1 AND 200),
+  category             TEXT    NOT NULL DEFAULT 'other'
+                       CHECK (category IN ('flour','water','salt','starter','sweetener','fat','dairy','yeast','inclusion','other')),
+  package_price_cents  INTEGER NULL CHECK (package_price_cents IS NULL OR package_price_cents >= 0),
+  package_size         REAL    NULL CHECK (package_size IS NULL OR package_size > 0),
+  package_unit         TEXT    NULL CHECK (package_unit IS NULL OR package_unit IN
+                         ('g','kg','oz','lb','ml','l','tsp','tbsp','cup','floz','qt','gal','each')),
+  grams_per_cup        REAL    NULL CHECK (grams_per_cup  IS NULL OR grams_per_cup  > 0),  -- density (C-2)
+  grams_per_each       REAL    NULL CHECK (grams_per_each IS NULL OR grams_per_each > 0),  -- for 'each' items (jalapeño, egg)
+  store                TEXT    NULL CHECK (store IS NULL OR length(store) <= 200),
+  priced_at            TEXT    NULL,                                                         -- local date YYYY-MM-DD
+  seed_key             TEXT    NULL,
+  created_at           TEXT    NOT NULL,
+  updated_at           TEXT    NOT NULL,
+  deleted_at           TEXT    NULL,                                                         -- "archived" in the UI
+  CHECK ((package_price_cents IS NULL) = (package_size IS NULL)
+     AND (package_size IS NULL) = (package_unit IS NULL))                                    -- all-or-none price
+) STRICT
+
+table price_history
+CREATE TABLE price_history (       -- append-only log; current price is mirrored on pantry_item
+  id                   TEXT    PRIMARY KEY NOT NULL,
+  pantry_item_id       TEXT    NOT NULL REFERENCES pantry_item(id),
+  package_price_cents  INTEGER NOT NULL CHECK (package_price_cents >= 0),
+  package_size         REAL    NOT NULL CHECK (package_size > 0),
+  package_unit         TEXT    NOT NULL,
+  store                TEXT    NULL,
+  priced_at            TEXT    NOT NULL,                                                     -- local date
+  created_at           TEXT    NOT NULL,
+  updated_at           TEXT    NOT NULL,
+  deleted_at           TEXT    NULL
+) STRICT
+
+table recipe
+CREATE TABLE recipe (
+  id              TEXT    PRIMARY KEY NOT NULL,
+  name            TEXT    NOT NULL CHECK (length(trim(name)) BETWEEN 1 AND 200),
+  notes           TEXT    NOT NULL DEFAULT '' CHECK (length(notes) <= 10000),
+  yield_loaves    INTEGER NOT NULL DEFAULT 1 CHECK (yield_loaves BETWEEN 1 AND 50),
+  dough_weight_g  INTEGER NULL CHECK (dough_weight_g IS NULL OR dough_weight_g > 0),  -- target PER LOAF (ADR 0010 §8)
+  tags_json       TEXT    NOT NULL DEFAULT '[]' CHECK (json_valid(tags_json) AND json_type(tags_json) = 'array'),
+  favorite        INTEGER NOT NULL DEFAULT 0 CHECK (favorite IN (0,1)),
+  seed_key        TEXT    NULL,
+  created_at      TEXT    NOT NULL,
+  updated_at      TEXT    NOT NULL,
+  deleted_at      TEXT    NULL
+) STRICT
+
+table recipe_ingredient
+CREATE TABLE recipe_ingredient (
+  id                    TEXT    PRIMARY KEY NOT NULL,
+  recipe_id             TEXT    NOT NULL REFERENCES recipe(id),
+  pantry_item_id        TEXT    NULL REFERENCES pantry_item(id),   -- NULL only for imported/unlinked lines (cost: unpriced)
+  position              INTEGER NOT NULL CHECK (position >= 0),
+  name                  TEXT    NOT NULL CHECK (length(trim(name)) BETWEEN 1 AND 200), -- display name (defaults to pantry name)
+  role                  TEXT    NOT NULL CHECK (role IN ('flour','water','salt','levain','inclusion','other')),
+  amount_g              REAL    NOT NULL CHECK (amount_g >= 0),   -- canonical grams (BUILD_PLAN: grams in storage)
+  entry_amount          REAL    NULL CHECK (entry_amount IS NULL OR entry_amount >= 0), -- as typed, for faithful redisplay
+  entry_unit            TEXT    NULL CHECK (entry_unit IS NULL OR entry_unit IN
+                          ('g','kg','oz','lb','ml','l','tsp','tbsp','cup','floz','qt','gal','each')),
+  levain_hydration_pct  REAL    NULL CHECK (levain_hydration_pct IS NULL OR levain_hydration_pct BETWEEN 20 AND 300),
+  created_at            TEXT    NOT NULL,
+  updated_at            TEXT    NOT NULL,
+  deleted_at            TEXT    NULL,
+  CHECK ((role = 'levain') = (levain_hydration_pct IS NOT NULL))   -- ADR 0007
+) STRICT
+
+table settings
+CREATE TABLE settings (
+  id                     TEXT    PRIMARY KEY NOT NULL CHECK (id = 'settings'),
+  unit_system            TEXT    NOT NULL DEFAULT 'metric' CHECK (unit_system IN ('metric','us')),
+  temperature_unit       TEXT    NOT NULL DEFAULT 'C'      CHECK (temperature_unit IN ('C','F')),
+  quiet_hours_enabled    INTEGER NOT NULL DEFAULT 1        CHECK (quiet_hours_enabled IN (0,1)),
+  quiet_start_min        INTEGER NOT NULL DEFAULT 1320     CHECK (quiet_start_min BETWEEN 0 AND 1439), -- 22:00
+  quiet_end_min          INTEGER NOT NULL DEFAULT 360      CHECK (quiet_end_min   BETWEEN 0 AND 1439), -- 06:00
+  oven_capacity          INTEGER NOT NULL DEFAULT 1        CHECK (oven_capacity BETWEEN 1 AND 12),
+  reheat_gap_min         INTEGER NOT NULL DEFAULT 0        CHECK (reheat_gap_min BETWEEN 0 AND 120),   -- provisional (Q8)
+  markup_bps             INTEGER NOT NULL DEFAULT 20000    CHECK (markup_bps BETWEEN 0 AND 1000000),   -- provisional 200%
+  sell_rounding_cents    INTEGER NOT NULL DEFAULT 0        CHECK (sell_rounding_cents BETWEEN 0 AND 10000), -- 0 = none, else round up to a multiple
+  heads_up_min           INTEGER NOT NULL DEFAULT 10       CHECK (heads_up_min BETWEEN 0 AND 120),     -- 0 = off
+  keep_awake_default     INTEGER NOT NULL DEFAULT 1        CHECK (keep_awake_default IN (0,1)),
+  currency_override      TEXT    NULL CHECK (currency_override IS NULL OR length(currency_override) = 3),  -- unused in v1 (A5)
+  onboarding_completed_at TEXT   NULL,
+  created_at             TEXT    NOT NULL,
+  updated_at             TEXT    NOT NULL,
+  deleted_at             TEXT    NULL
+) STRICT
+
+table step
+CREATE TABLE step (
+  id                 TEXT    PRIMARY KEY NOT NULL,
+  recipe_id          TEXT    NOT NULL REFERENCES recipe(id),
+  position           INTEGER NOT NULL CHECK (position >= 0),
+  name               TEXT    NOT NULL CHECK (length(trim(name)) BETWEEN 1 AND 200),
+  kind               TEXT    NOT NULL DEFAULT 'other' CHECK (kind IN
+                       ('feed','mix','fold','bulk','shape','proof','coldProof','preheat','bake','cool','other')),
+  duration_min       INTEGER NOT NULL,
+  min_min            INTEGER NOT NULL,
+  max_min            INTEGER NOT NULL,
+  temp_sensitive     INTEGER NOT NULL DEFAULT 0 CHECK (temp_sensitive IN (0,1)),
+  anchor_type        TEXT    NOT NULL DEFAULT 'sequential' CHECK (anchor_type IN ('sequential','alongside')),
+  anchor_step_id     TEXT    NULL REFERENCES step(id),
+  anchor_align       TEXT    NULL CHECK (anchor_align IS NULL OR anchor_align IN ('endsAtStart','startsAtStart','endsAtEnd')),
+  anchor_offset_min  INTEGER NOT NULL DEFAULT 0 CHECK (anchor_offset_min BETWEEN -1440 AND 1440),
+  fold_count         INTEGER NULL CHECK (fold_count IS NULL OR fold_count BETWEEN 1 AND 12),
+  fold_interval_min  INTEGER NULL CHECK (fold_interval_min IS NULL OR fold_interval_min BETWEEN 5 AND 180),
+  notify             INTEGER NOT NULL DEFAULT 1 CHECK (notify IN (0,1)),
+  notes              TEXT    NOT NULL DEFAULT '' CHECK (length(notes) <= 2000),
+  created_at         TEXT    NOT NULL,
+  updated_at         TEXT    NOT NULL,
+  deleted_at         TEXT    NULL,
+  CHECK (0 < min_min AND min_min <= duration_min AND duration_min <= max_min AND max_min <= 10080),
+  CHECK ((anchor_type = 'alongside') = (anchor_step_id IS NOT NULL AND anchor_align IS NOT NULL)),
+  CHECK ((fold_count IS NULL) = (fold_interval_min IS NULL)),
+  CHECK (fold_count IS NULL OR (duration_min = fold_count * fold_interval_min
+                                AND min_min = duration_min AND max_min = duration_min))  -- ADR 0010 §3
+) STRICT"
+`;

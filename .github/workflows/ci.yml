@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Lint, typecheck, test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run typecheck
+      - run: npm test
+      - name: Audit production dependencies (high and above)
+        run: npm audit --omit=dev --audit-level=high
+
+  bundle-size:
+    name: JS bundle size
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: check
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Export Android bundle (Hermes)
+        working-directory: apps/mobile
+        env:
+          APP_ENV: production
+          CI: '1'
+        run: npx expo export --platform android --output-dir dist
+      - name: Record bundle size
+        working-directory: apps/mobile
+        run: |
+          size=$(find dist/_expo/static/js/android -name '*.hbc' -exec du -k {} + | awk '{s+=$1} END {print s}')
+          echo "Android Hermes bundle: ${size} KiB"
+          {
+            echo "### JS bundle size"
+            echo ""
+            echo "Android Hermes bundle: **${size} KiB**"
+          } >> "$GITHUB_STEP_SUMMARY"

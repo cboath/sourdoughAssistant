@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- PLACEHOLDER app icon (plan Q5). Palette "Crust" from docs/design/tokens.md:
+       flour50 #FBF8F3 (background), crust700 #9A4A12 (loaf), crust300 #F0A46A (score), flour200 #E8E0D5 (board).
+       iOS master: opaque, square, no rounded corners (the OS applies the mask). -->
+  <title>Sourdough Assistant</title>
+  <rect width="1024" height="1024" fill="#FBF8F3"/>
+  <g transform="translate(0 -22)">
+    <path fill="#9A4A12" d="M262 712 C232 712 222 694 224 668 C238 462 366 300 512 300 C658 300 786 462 800 668 C802 694 792 712 762 712 Z"/>
+    <path fill="none" stroke="#F0A46A" stroke-width="40" stroke-linecap="round" d="M360 560 C424 456 540 410 660 432"/>
+    <rect x="192" y="740" width="640" height="28" rx="14" fill="#E8E0D5"/>
+  </g>
+</svg>
