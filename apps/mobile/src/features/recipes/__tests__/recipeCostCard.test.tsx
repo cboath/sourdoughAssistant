@@ -33,7 +33,7 @@ const WHEAT = '5eed0001-0000-4000-8000-000000000002';
 const DETAIL = ['/recipes', `/recipes/${COUNTRY}`];
 
 afterEach(async () => {
-  flags.scheduling = false;
+  flags.scheduling = true; // RN-06 turned it on
   flags.costSettings = false;
   clearClients();
   routerSpies.reset();
@@ -230,7 +230,8 @@ describe('suggested price and links that are not built yet', () => {
     expect(screen.queryByRole('button', { name: 'Change markup' })).toBeNull();
   });
 
-  it('the detail screen has no Schedule button until RN-06 (DR1-03)', async () => {
+  it('the detail screen has no Schedule button while the flag is off (DR1-03)', async () => {
+    flags.scheduling = false;
     await renderScreen(<Navigator initial={DETAIL} />, { seed: true });
     await screen.findByText('77.3%');
     expect(screen.queryByTestId('schedule')).toBeNull();

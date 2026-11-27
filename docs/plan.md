@@ -224,3 +224,21 @@ Recorded by the orchestrator on 2026-11-26. The details are in `docs/architectur
 - **SEC-M3-05 → RE-01:** add `babel-plugin-transform-remove-console` for production, or amend ADR 0015.
 - **SEC-M3-06 → RE-01:** the 20 moderate advisories are in dev tooling. Take the fixes through normal Expo and Jest updates. Never run `npm audit fix --force`, which downgrades expo.
 - **Before the next device build:** run `expo prebuild --clean`, because the local `ios/` folder is stale.
+- **Android on hold (Chris, 2026-11-27):** there's no disk space for the emulator. AN-01, the Android column of QA-04, and Android device checks stay blocked until Chris frees space or provides an Android phone. iOS work goes ahead.
+- **RN-06 done (2026-11-27):** 519 app tests pass.
+  - Spec bug in `docs/design/screens-bake.md` §3.3: with an 18 h cold ferment, "Mix and rest" starts at 5:05 AM, which is inside quiet hours, so the warning moves to that step rather than disappearing. ux-ui-designer should fix the text during DR-02.
+  - The slider uses PanResponder, so it runs on the JS thread. Moving it to gesture-handler or Reanimated goes with DR1-29.
+- **IO-01 partial (2026-11-27):**
+  - Built: the build, config and dev harness (`/dev-notifications`, dev only) and `docs/native/ios-notifications.md`.
+  - Not run: nothing on this Mac can tap the Simulator, so permission, scheduling and the 64-cap checks still need someone to run them by hand.
+  - Open risk: we don't know whether a free personal team can sign the time-sensitive entitlement. The plugin is gated (off for local builds, on for EAS preview and production). Check this on Chris's iPhone using §8 of the doc.
+- **RN-07 done (2026-11-27):** 128 notification tests pass. The wiring for the live seam, the banners and the primer navigation went to RN-08.
+  - **Android follow-up (on hold, AN-01):** `app.config.ts` doesn't declare `SCHEDULE_EXACT_ALARM`. Until it does, exact alarms count as denied.
+  - **Quiet hours:** they are warnings only (ADR 0010 §5 / 0011 §2), so steps inside quiet hours still ring.
+- **M4/M5 verify (2026-11-27):**
+  - QA-04: 75 tests added, GO for the code. Milestone sign-off waits on manual phone runs (`docs/test-runs/m4.md`).
+  - DR-02: 28 issues (0 blocker / 9 major / 19 minor) in `docs/design/review-m4-m5.md`. Spec fixes are in screens-bake.md.
+  - The fix loop is with RN-08's agent.
+  - Open:
+    - `cancelBakeNotifications` has no caller yet (RN-09 delete/restore).
+    - `expo-keep-awake` is now declared.

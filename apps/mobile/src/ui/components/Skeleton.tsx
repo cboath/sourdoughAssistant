@@ -8,7 +8,7 @@ export interface SkeletonProps {
   /** Number of placeholder rows. */
   rows?: number;
   /** `detail`: a heading bar and a card-shaped block above the rows (detail screens). */
-  variant?: 'list' | 'detail';
+  variant?: 'list' | 'detail' | 'card' | 'panel';
   testID?: string;
 }
 
@@ -73,7 +73,22 @@ export function Skeleton({ rows = 6, variant = 'list', testID }: SkeletonProps) 
           <Bar width="100%" opacity={pulse} height={space.huge * 2} />
         </View>
       ) : null}
-      {Array.from({ length: rows }, (_, i) => (
+      {variant === 'card'
+        ? Array.from({ length: 2 }, (_, i) => (
+            <View key={i} style={{ paddingVertical: space.md, gap: space.md }}>
+              <Bar width="60%" opacity={pulse} height={space.lg} />
+              <Bar width="40%" opacity={pulse} height={space.xl} />
+              <Bar width="100%" opacity={pulse} height={space.sm} />
+            </View>
+          ))
+        : null}
+      {variant === 'panel' ? (
+        <View style={{ paddingVertical: space.md, gap: space.lg }}>
+          <Bar width="50%" opacity={pulse} height={space.xl} />
+          <Bar width="70%" opacity={pulse} height={space.huge + space.xl} />
+        </View>
+      ) : null}
+      {Array.from({ length: variant === 'card' ? 0 : variant === 'panel' ? 3 : rows }, (_, i) => (
         <View key={i} style={{ paddingVertical: space.md, gap: space.sm }}>
           <Bar width="60%" opacity={pulse} />
           <Bar width="40%" opacity={pulse} />

@@ -21,6 +21,9 @@ export const routes = {
   bake: (id: string) => href(`/bake/${id}`),
   schedulePick: href('/bake/schedule'),
   schedulePlan: (query = '') => href(`/bake/schedule/plan${query}`),
+  permissionNotifications: (bakeId: string) =>
+    href(`/bake/schedule/permission-notifications?bakeId=${bakeId}`),
+  permissionAlarm: (bakeId: string) => href(`/bake/schedule/permission-alarm?bakeId=${bakeId}`),
   pantry: href('/pantry'),
   settingsCost: href('/settings/cost'),
 } as const;

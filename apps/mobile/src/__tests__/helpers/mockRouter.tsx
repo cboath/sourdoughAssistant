@@ -13,6 +13,8 @@ export const routerSpies = {
   dismiss: jest.fn(),
   dismissAll: jest.fn(),
   params: {} as Record<string, string | string[] | undefined>,
+  /** What `usePathname()` returns. */
+  pathname: '/',
   /** The options of the last `<Stack.Screen>` rendered (header buttons live here). */
   options: undefined as undefined | Record<string, unknown>,
   reset() {
@@ -23,6 +25,7 @@ export const routerSpies = {
     this.dismiss.mockClear();
     this.dismissAll.mockClear();
     this.params = {};
+    this.pathname = '/';
     this.options = undefined;
   },
 };
@@ -51,5 +54,6 @@ export const mockExpoRouter = {
   useRouter: () => router,
   useNavigation: () => navigation,
   useLocalSearchParams: () => routerSpies.params,
+  usePathname: () => routerSpies.pathname,
   Stack,
 };

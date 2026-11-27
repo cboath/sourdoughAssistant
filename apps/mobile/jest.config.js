@@ -17,6 +17,7 @@ module.exports = {
         '<rootDir>/src/state/*.test.ts',
         '<rootDir>/src/lib/*.test.ts',
         '<rootDir>/src/features/notifications/*.test.ts',
+        '<rootDir>/src/features/notifications/__tests__/*.test.ts',
         '<rootDir>/src/features/backup/*.test.ts',
       ],
       transform: { '^.+\\.[jt]sx?$': ['babel-jest', { presets: ['babel-preset-expo'] }] },

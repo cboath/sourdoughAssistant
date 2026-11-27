@@ -3,6 +3,7 @@ import { AccessibilityInfo, Pressable, View } from 'react-native';
 import { useTheme } from '../theme';
 import type { ColorTokens } from '../theme/tokens';
 import { t } from '../../lib/i18n';
+import { firstAnnouncement } from '../../state/announced';
 import { Icon, type IconName } from './Icon';
 import { IconButton } from './IconButton';
 import { Text } from './Text';
@@ -12,6 +13,8 @@ export type BannerVariant = 'info' | 'warning' | 'danger' | 'success';
 export interface BannerAction {
   label: string;
   onPress: () => void;
+  /** Spoken consequence, such as what "Hold ready time" changes. */
+  hint?: string;
 }
 
 export interface BannerProps {
@@ -23,6 +26,10 @@ export interface BannerProps {
   onDismiss?: () => void;
   /** 56 pt action targets for the live view. */
   tier?: 'standard' | 'kitchen';
+  /** Announced once per session per key; without one, every mount announces. */
+  announceKey?: string;
+  /** Spoken name of the X when several banners are on screen ("Dismiss reminders warning"). */
+  dismissLabel?: string;
   testID?: string;
 }
 
@@ -42,6 +49,8 @@ export function Banner({
   actions = [],
   onDismiss,
   tier = 'standard',
+  announceKey,
+  dismissLabel,
   testID,
 }: BannerProps) {
   const { color, space, radius, size } = useTheme();
@@ -49,7 +58,9 @@ export function Banner({
   // `role="alert"` does nothing on iOS, so a warning or error is also announced when it first appears.
   const urgent = variant === 'warning' || variant === 'danger';
   useEffect(() => {
-    if (urgent) AccessibilityInfo.announceForAccessibility(message);
+    if (urgent && (announceKey === undefined || firstAnnouncement(announceKey))) {
+      AccessibilityInfo.announceForAccessibility(message);
+    }
     // Only the first appearance announces.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -82,6 +93,7 @@ export function Banner({
                 key={action.label}
                 accessibilityRole="button"
                 accessibilityLabel={action.label}
+                accessibilityHint={action.hint}
                 onPress={action.onPress}
                 style={{
                   minHeight: actionHeight,
@@ -102,7 +114,12 @@ export function Banner({
         ) : null}
       </View>
       {onDismiss ? (
-        <IconButton icon="close" accessibilityLabel={t('common.dismiss')} onPress={onDismiss} />
+        <IconButton
+          icon="close"
+          tier={tier}
+          accessibilityLabel={dismissLabel ?? t('common.dismiss')}
+          onPress={onDismiss}
+        />
       ) : null}
     </View>
   );

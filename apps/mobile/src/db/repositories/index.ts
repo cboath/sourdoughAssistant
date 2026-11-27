@@ -47,7 +47,7 @@ export function createRepositories(deps: RepositoryDeps & { db: SqlDatabase }): 
   };
 }
 
-export type { BakeRepository, ListBakesOptions, BakeStepUpdate } from './bakes';
+export type { BakeRepository, BakeRowsPreImage, ListBakesOptions, BakeStepUpdate } from './bakes';
 export type { ListPantryOptions, PantryRepository, PriceHistoryRepository } from './pantry';
 export type { RecipeRepository } from './recipes';
 export type { SettingsRepository } from './settings';

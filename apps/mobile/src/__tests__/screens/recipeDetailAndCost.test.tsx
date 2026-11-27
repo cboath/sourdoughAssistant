@@ -25,7 +25,7 @@ const unprice = async ({ repos }: TestDb) => {
 };
 
 afterEach(() => {
-  flags.scheduling = false;
+  flags.scheduling = true; // RN-06 turned it on
   flags.costSettings = false;
   clearClients();
   routerSpies.reset();
@@ -80,7 +80,8 @@ describe('RecipeDetailScreen: seeded Country loaf', () => {
     await fireEvent.press(screen.getByTestId('scale-mode-doughWeight'));
     await fireEvent.press(screen.getByTestId('per-loaf-plus'));
     expect(screen.getByText('Total 1,036 g (target 1,035 g)')).toBeTruthy();
-    expect(screen.queryByText("Bakes use the recipe's dough weight.")).toBeNull();
+    // RN-06: the Schedule bar (with its note) is there now; the exact wording is asserted below.
+    expect(screen.getByText("Bakes use the recipe's dough weight.")).toBeTruthy();
     const bad = screen.getByTestId('per-loaf');
     await fireEvent.changeText(bad, '10');
     await fireEvent(bad, 'blur');
@@ -92,8 +93,8 @@ describe('RecipeDetailScreen: seeded Country loaf', () => {
     await screen.findByText('77.3%');
     await fireEvent.press(screen.getByTestId('cost-card'));
     expect(routerSpies.push).toHaveBeenCalledWith(`/recipes/${COUNTRY}/cost?loaves=1`);
-    // Scheduling is hidden until RN-06 (DR1-03).
-    expect(screen.queryByTestId('schedule')).toBeNull();
+    // RN-06: the schedule route exists, so the button is there.
+    expect(screen.getByTestId('schedule')).toBeTruthy();
   });
 
   it('with scheduling on, the bar carries the loaves and the dough-weight note', async () => {

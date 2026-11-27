@@ -7,6 +7,8 @@ import { create } from 'zustand';
 export interface SnackbarMessage {
   id: number;
   message: string;
+  /** What a screen reader hears instead of `message` (one combined announcement, DR2-06). */
+  spokenMessage?: string;
   actionLabel?: string;
   onAction?: () => void;
 }

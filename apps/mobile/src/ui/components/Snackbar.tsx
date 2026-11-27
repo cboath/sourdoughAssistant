@@ -7,6 +7,7 @@ import { Text } from './Text';
 
 export interface SnackbarProps {
   message: string;
+  spokenMessage?: string;
   actionLabel?: string;
   onAction?: () => void;
   onDismiss: () => void;
@@ -21,6 +22,7 @@ export interface SnackbarProps {
 /** Brief confirmation with Undo. The timer pauses while the user touches it. */
 export function Snackbar({
   message,
+  spokenMessage,
   actionLabel,
   onAction,
   onDismiss,
@@ -62,7 +64,7 @@ export function Snackbar({
 
   useEffect(() => {
     // Android announces through the live region below; iOS has no live regions.
-    if (Platform.OS === 'ios') AccessibilityInfo.announceForAccessibility(message);
+    if (Platform.OS === 'ios') AccessibilityInfo.announceForAccessibility(spokenMessage ?? message);
     start();
     return pause;
     // eslint-disable-next-line react-hooks/exhaustive-deps -- restart only for a new message or reader change
@@ -138,6 +140,7 @@ export function SnackbarHost() {
     <Snackbar
       key={current.id}
       message={current.message}
+      spokenMessage={current.spokenMessage}
       actionLabel={current.actionLabel}
       onAction={current.onAction}
       onDismiss={() => dismiss(current.id)}

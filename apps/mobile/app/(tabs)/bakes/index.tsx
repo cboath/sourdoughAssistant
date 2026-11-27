@@ -1,12 +1,5 @@
-import { Stack } from 'expo-router';
-import { t } from '../../../src/lib/i18n';
-import { ScreenPlaceholder } from '../../../src/ui/components/ScreenPlaceholder';
+import { BakesHomeScreen } from '../../../src/features/live/components/BakesHomeScreen';
 
 export default function BakesScreen() {
-  return (
-    <>
-      <Stack.Screen options={{ title: t('tabs.bakes') }} />
-      <ScreenPlaceholder title={t('tabs.bakes')} body={t('placeholder.bakes')} />
-    </>
-  );
+  return <BakesHomeScreen />;
 }

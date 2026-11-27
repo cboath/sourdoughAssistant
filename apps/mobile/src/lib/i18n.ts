@@ -3,12 +3,16 @@
  * with DS-02/03/04). Add locales by adding another table and selecting it in `activeTable`.
  * `{name}` placeholders are replaced from `vars`.
  */
+import { enNotifications } from './i18n-notifications';
+import { enLive } from './i18n-live';
 import { enRecipes } from './i18n-recipes';
 import { enSchedule } from './i18n-schedule';
 
 export const en = {
   ...enRecipes,
   ...enSchedule,
+  ...enLive,
+  ...enNotifications,
   'app.name': 'Sourdough Assistant',
   'tabs.bakes': 'Bakes',
   'tabs.recipes': 'Recipes',

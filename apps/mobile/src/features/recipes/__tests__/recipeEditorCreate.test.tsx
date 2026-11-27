@@ -195,8 +195,14 @@ describe('create a recipe (TC-RE-01)', () => {
 describe('double tap on Save', () => {
   const doubleTap = async () => {
     const shown: string[] = [];
+    // One entry per snackbar: other store updates (a BottomActionBar's clearance, which the detail
+    // screen mounts now that scheduling is on) must not count as a second message.
+    let lastId = -1;
     const stop = useSnackbarStore.subscribe((state) => {
-      if (state.current) shown.push(state.current.message);
+      if (state.current && state.current.id !== lastId) {
+        lastId = state.current.id;
+        shown.push(state.current.message);
+      }
     });
     const { db } = await renderScreen(<Navigator initial={['/recipes', '/recipe-editor/new']} />, {
       seed: true,

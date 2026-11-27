@@ -39,6 +39,8 @@ export const routeParams = {
   bake: z.object({ id: uuidParam, step: uuidParam.optional() }),
   /** `bake/schedule/plan`: prefills the draft only (screens-bake.md 0.1). Nothing is written on mount. */
   schedulePlan: z.object({ recipeId: uuidParam.optional(), loaves: loavesParam.optional() }),
+  /** `bake/schedule/permission-notifications` and `permission-alarm`: the bake is already saved. */
+  permissionPrimer: z.object({ bakeId: uuidParam }),
   /** `(tabs)/recipes/[id]` and `/cost` */
   recipe: z.object({ id: uuidParam, loaves: loavesParam.optional() }),
   /** `(tabs)/pantry/[id]` */

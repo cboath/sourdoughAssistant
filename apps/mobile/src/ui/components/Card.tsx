@@ -8,6 +8,10 @@ export interface CardProps {
   children: ReactNode;
   /** Makes the whole card one pressable focus stop. Then `accessibilityLabel` is required. */
   onPress?: () => void;
+  /** Long press and the matching screen-reader actions (a context menu with no long-press-only paths). */
+  onLongPress?: () => void;
+  accessibilityActions?: ReadonlyArray<{ name: string; label: string }>;
+  onAccessibilityAction?: (name: string) => void;
   accessibilityLabel?: string;
   accessibilityHint?: string;
   style?: StyleProp<ViewStyle>;
@@ -17,6 +21,9 @@ export interface CardProps {
 export function Card({
   children,
   onPress,
+  onLongPress,
+  accessibilityActions,
+  onAccessibilityAction,
   accessibilityLabel,
   accessibilityHint,
   style,
@@ -45,6 +52,11 @@ export function Card({
       accessibilityLabel={accessibilityLabel}
       accessibilityHint={accessibilityHint}
       onPress={onPress}
+      onLongPress={onLongPress}
+      accessibilityActions={accessibilityActions ? [...accessibilityActions] : undefined}
+      onAccessibilityAction={
+        onAccessibilityAction ? (e) => onAccessibilityAction(e.nativeEvent.actionName) : undefined
+      }
       {...focus.handlers}
       style={({ pressed }) => [
         base,

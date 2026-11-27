@@ -19,6 +19,7 @@ export * from './Icon';
 export * from './IconButton';
 export * from './ListRow';
 export * from './NotFoundView';
+export * from './ProgressBar';
 export * from './RangeField';
 export * from './SearchField';
 export * from './SegmentedControl';

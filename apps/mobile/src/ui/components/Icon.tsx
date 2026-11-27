@@ -45,6 +45,10 @@ const GLYPHS = {
   levain: 'bubble-chart',
   edit: 'edit',
   delete: 'delete-outline',
+  sun: 'wb-sunny',
+  arrowBack: 'arrow-back',
+  checkCircle: 'check-circle',
+  play: 'play-arrow',
 } as const satisfies Record<string, Glyph>;
 
 export type IconName = keyof typeof GLYPHS;

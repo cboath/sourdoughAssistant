@@ -7,7 +7,7 @@
  * Use it from a test file with:
  *   jest.mock('expo-router', () => jest.requireActual('<path>/helpers/navigatorState').mockExpoRouterWithNavigator);
  * and render `<Navigator initial={['/recipes', '/recipe-editor/new']} />` with `renderScreen`.
- * Routes that do not exist yet (for example `/bake/schedule/plan`, `/settings/cost`) render a
+ * Routes that do not exist yet (for example `/bake/<id>`, `/settings/cost`) render a
  * `route-not-found` marker, like the real app.
  */
 import { useEffect, useState } from 'react';
@@ -15,6 +15,8 @@ import { View } from 'react-native';
 import { CostScreen } from '../../features/cost/components/CostScreen';
 import { IngredientEditorScreen } from '../../features/recipes/components/IngredientEditorScreen';
 import { RecipeDetailScreen } from '../../features/recipes/components/RecipeDetailScreen';
+import { SchedulePickScreen } from '../../features/schedule/components/SchedulePickScreen';
+import { SchedulePlanScreen } from '../../features/schedule/components/SchedulePlanScreen';
 import { RecipeEditorScreen } from '../../features/recipes/components/RecipeEditorScreen';
 import { RecipeListScreen } from '../../features/recipes/components/RecipeListScreen';
 import { StepEditorScreen } from '../../features/recipes/components/StepEditorScreen';
@@ -34,6 +36,15 @@ function Route({ path }: { path: string }) {
   const { segments, query } = parse(path);
   const [first, second, third] = segments;
   const loaves = query.get('loaves') ? Number(query.get('loaves')) : undefined;
+  if (first === 'bake' && second === 'schedule' && third === 'plan') {
+    return (
+      <SchedulePlanScreen
+        recipeId={query.get('recipeId') ?? undefined}
+        loaves={query.get('loaves') ? Number(query.get('loaves')) : undefined}
+      />
+    );
+  }
+  if (first === 'bake' && second === 'schedule') return <SchedulePickScreen />;
   if (first === 'recipe-editor' && second === 'ingredient') {
     return (
       <IngredientEditorScreen

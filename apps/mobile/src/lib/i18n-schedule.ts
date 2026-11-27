@@ -28,8 +28,8 @@ export const enSchedule = {
   'pick.selectionSummary': '{loaves}, {recipes}',
   'pick.continue': 'Continue',
   'pick.selectFirst': 'Select at least one recipe.',
-  'pick.empty.title': 'No recipes yet',
-  'pick.empty.body':
+  'pick.noRecipes.title': 'No recipes yet',
+  'pick.noRecipes.body':
     'Add a recipe first, or start with a country loaf, whole wheat and an inclusion loaf.',
   'pick.newRecipe': 'New recipe',
   'pick.addStarters': 'Add starter recipes',
@@ -95,6 +95,7 @@ export const enSchedule = {
   'plan.timeline': 'Timeline',
   'plan.span': '{span} total',
   'plan.meta.range': '{duration} · range {range}',
+  'plan.range.spoken': '{min} to {max}',
   'plan.meta.fixed': '{duration}',
   'plan.meta.user': '{duration} · you chose this · range {range}',
   'plan.meta.folds.one': '{count} fold, every {interval} · {duration}',
@@ -136,6 +137,7 @@ export const enSchedule = {
   'plan.tooSoon.preview': 'Showing times for the earliest ready time.',
   'plan.invalid': "{recipe} can't be scheduled: {reason}",
   'plan.invalid.capacity': 'Bake all {total} together',
+  'plan.cantSchedule.gone': 'This recipe was deleted. Go back to your recipes.',
   'plan.recipeGone': 'This recipe was deleted.',
   'plan.backToRecipes': 'Back to recipes',
 
@@ -145,7 +147,7 @@ export const enSchedule = {
   'plan.warn.hint': 'Shows the step',
   'plan.quiet.summary.one': '{count} step needs you during quiet hours ({from}–{to}).',
   'plan.quiet.summary.other': '{count} steps need you during quiet hours ({from}–{to}).',
-  'plan.quiet.hint': 'A longer cold ferment moves earlier steps earlier.',
+  'plan.quiet.hint': 'To move these steps, change the ready time or how long a step takes.',
   'plan.overlap.summary.one': '{count} pair of steps happens at the same time.',
   'plan.overlap.summary.other': '{count} pairs of steps happen at the same time.',
   'plan.dst.summary':

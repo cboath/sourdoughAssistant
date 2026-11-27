@@ -8,7 +8,10 @@ export const flags: {
   scheduling: boolean;
   /** `settings/cost` (RN-10): "Change markup" on the cost screen. */
   costSettings: boolean;
+  /** "Ready to eat" notification at the end of Cool (RN-07). Off until Chris answers B8: it adds one iOS slot per bake item. */
+  readyNotification: boolean;
 } = {
-  scheduling: false,
+  scheduling: true,
   costSettings: false,
+  readyNotification: false,
 };

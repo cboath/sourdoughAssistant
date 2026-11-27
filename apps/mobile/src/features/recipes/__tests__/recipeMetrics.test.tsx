@@ -31,7 +31,7 @@ const EDIT = ['/recipes', `/recipes/${COUNTRY}`, `/recipe-editor/${COUNTRY}`];
 const DETAIL = ['/recipes', `/recipes/${COUNTRY}`];
 
 afterEach(async () => {
-  flags.scheduling = false;
+  flags.scheduling = true; // RN-06 turned it on
   flags.costSettings = false;
   clearClients();
   routerSpies.reset();
@@ -172,12 +172,13 @@ describe('detail: scaling by loaves', () => {
     expect(screen.getByText('Total 49,250 g')).toBeTruthy();
   });
 
-  it('a ?loaves= deep link opens at that scale, and "Schedule" stays hidden until RN-06', async () => {
+  it('a ?loaves= deep link opens at that scale, and "Schedule" hides when the flag is off', async () => {
+    flags.scheduling = false;
     await renderScreen(<Navigator initial={['/recipes', `/recipes/${COUNTRY}?loaves=2`]} />, {
       seed: true,
     });
     expect(await screen.findByText('Total 1,970 g')).toBeTruthy();
-    // DR1-03: no button that leads to "Page not found".
+    // DR1-03: a flagged-off route never gets a button.
     expect(screen.queryByTestId('schedule')).toBeNull();
   });
 
@@ -217,8 +218,8 @@ describe('detail: scaling by dough weight', () => {
     expect(await screen.findByText('Total 1,200 g')).toBeTruthy();
     expect(screen.getByLabelText(/^Bread flour, 548 grams/)).toBeTruthy();
     expect(screen.getByText('77.3%')).toBeTruthy();
-    // Scheduling is hidden until RN-06, and the note lives in its bar.
-    expect(screen.queryByText("Bakes use the recipe's dough weight.")).toBeNull();
+    // The note lives in the Schedule bar, which only exists while scheduling is on.
+    expect(screen.getByText("Bakes use the recipe's dough weight.")).toBeTruthy();
   });
 
   it('with scheduling on, the bar says bakes use the recipe dough weight', async () => {

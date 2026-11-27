@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { Platform, View } from 'react-native';
 import { t } from '../../lib/i18n';
+import { useTheme } from '../theme';
+import { Divider } from './Divider';
 import { ListRow } from './ListRow';
 import { Sheet } from './Sheet';
 
@@ -12,6 +14,8 @@ export interface SheetAction {
   onPress: () => void;
   destructive?: boolean;
   disabled?: boolean;
+  /** A gap and a divider above this row: destructive rows sit apart from the rest (DR2-11). */
+  separatorBefore?: boolean;
 }
 
 export interface ActionSheetProps {
@@ -27,6 +31,7 @@ export interface ActionSheetProps {
  * confirm) is not dropped by iOS.
  */
 export function ActionSheet({ title, actions, onClose }: ActionSheetProps) {
+  const { space } = useTheme();
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // A pending action must not fire after the screen is gone.
   useEffect(
@@ -39,26 +44,34 @@ export function ActionSheet({ title, actions, onClose }: ActionSheetProps) {
     <Sheet visible={title !== null} onClose={onClose} title={title ?? ''}>
       <View accessibilityRole="menu">
         {actions.map((action) => (
-          <ListRow
-            key={action.label}
-            variant={action.destructive ? 'destructive' : 'action'}
-            title={action.label}
-            disabled={action.disabled}
-            onPress={() => {
-              onClose();
-              if (timer.current) clearTimeout(timer.current);
-              timer.current = setTimeout(action.onPress, ACTION_DELAY_MS);
-            }}
-            testID={`action-${action.label}`}
-          />
+          <View key={action.label}>
+            {action.separatorBefore || action.destructive ? (
+              <View style={{ paddingTop: space.md }}>
+                <Divider />
+              </View>
+            ) : null}
+            <ListRow
+              variant={action.destructive ? 'destructive' : 'action'}
+              title={action.label}
+              disabled={action.disabled}
+              onPress={() => {
+                onClose();
+                if (timer.current) clearTimeout(timer.current);
+                timer.current = setTimeout(action.onPress, ACTION_DELAY_MS);
+              }}
+              testID={`action-${action.label}`}
+            />
+          </View>
         ))}
         {Platform.OS === 'ios' ? (
-          <ListRow
-            variant="action"
-            title={t('common.cancel')}
-            onPress={onClose}
-            testID="action-cancel"
-          />
+          <View style={{ paddingTop: space.sm }}>
+            <ListRow
+              variant="action"
+              title={t('common.cancel')}
+              onPress={onClose}
+              testID="action-cancel"
+            />
+          </View>
         ) : null}
       </View>
     </Sheet>

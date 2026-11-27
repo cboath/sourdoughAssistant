@@ -24,6 +24,8 @@ export interface ButtonProps {
   fullWidth?: boolean;
   disabled?: boolean;
   loading?: boolean;
+  /** Disabled for a moment after a tap, announced as busy, with no spinner (DR2-10). */
+  busy?: boolean;
   leadingIcon?: IconName;
   /** Explain why a button is disabled when that is not visible. */
   accessibilityHint?: string;
@@ -45,6 +47,7 @@ export function Button({
   fullWidth = false,
   disabled = false,
   loading = false,
+  busy = false,
   leadingIcon,
   accessibilityHint,
   accessibilityLabel,
@@ -54,7 +57,7 @@ export function Button({
   const { color, size: sizes, radius, space, opacity } = useTheme();
   const focus = useFocusRing();
   const showSpinner = useDelayedFlag(loading, SPINNER_DELAY_MS);
-  const inactive = disabled || loading;
+  const inactive = disabled || loading || busy;
   const android = Platform.OS === 'android';
 
   const minHeight =
@@ -109,7 +112,7 @@ export function Button({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityHint={accessibilityHint}
-      accessibilityState={{ disabled: inactive, busy: loading, expanded }}
+      accessibilityState={{ disabled: inactive, busy: loading || busy, expanded }}
       disabled={inactive}
       onPress={onPress}
       android_ripple={
@@ -142,12 +145,7 @@ export function Button({
         <Icon name={leadingIcon} color={labelColor} />
       ) : null}
       <View style={{ flexShrink: 1 }}>
-        <Text
-          variant="headline"
-          color={labelColor}
-          style={{ textAlign: 'center' }}
-          numberOfLines={size === 'hero' ? 2 : undefined}
-        >
+        <Text variant="headline" color={labelColor} style={{ textAlign: 'center' }}>
           {label}
         </Text>
       </View>
