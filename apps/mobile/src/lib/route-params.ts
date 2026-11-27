@@ -22,7 +22,7 @@ export const MAX_PREFILL_LENGTH = 200;
 // Control, bidi-override, zero-width and line-separator characters.
 /* eslint-disable no-control-regex -- removing control characters is the point */
 const UNSAFE_CHARS = new RegExp(
-  '[\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029\\u200b-\\u200f\\u202a-\\u202e]',
+  '[\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\u061c\\u180e\\u2060-\\u2064\\ufeff]',
   'g',
 );
 /* eslint-enable no-control-regex */

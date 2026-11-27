@@ -13,13 +13,14 @@ import { logger } from '../../../lib/logger';
 import { showSnackbar } from '../../../state/snackbar';
 import { haptic } from '../../../ui/haptics';
 import { useLocale } from '../../../ui/hooks/useLocale';
+import { reportRejected, showUndoSnackbar } from '../feedback';
 import { useBakeService } from '../../schedule/hooks/useScheduleData';
 import { formatClock } from '../../schedule/time';
 import type { BakeLive, ItemLive } from '../derive';
 import { signedMinutes } from '../format';
 import { labelFor, type HeroModel } from '../panel';
 import type { HoldAction } from '../ready';
-import type { ApplyEventValue, LiveError, RevertToken } from '../services/liveOps';
+import type { ApplyEventValue, RevertToken } from '../services/liveOps';
 import { routes } from '../../../lib/nav';
 import { formatDuration, spokenDuration } from '../../recipes/format';
 
@@ -50,27 +51,12 @@ export function useLiveActions(aggregate: BakeAggregate | null | undefined, live
   );
 
   const undoable = useCallback(
-    (message: string, token: RevertToken, spokenMessage?: string) => {
-      showSnackbar({
-        message,
-        ...(spokenMessage ? { spokenMessage } : {}),
-        actionLabel: t('common.undo'),
-        onAction: () => {
-          haptic('impactLight');
-          void service
-            .revert(token)
-            .catch((error: unknown) => logger.error('live.revert_failed', error));
-        },
-      });
-    },
+    (message: string, token: RevertToken, spokenMessage?: string) =>
+      showUndoSnackbar(service, message, token, spokenMessage),
     [service],
   );
 
-  const failed = useCallback((error: LiveError) => {
-    logger.warn('live.action_rejected', { code: error.code.length });
-    haptic('warning');
-    showSnackbar({ message: t('live.actionFailed') });
-  }, []);
+  const failed = reportRejected;
 
   const guard = useCallback(async <T>(work: () => Promise<T>): Promise<T | undefined> => {
     if (busyRef.current) return undefined;

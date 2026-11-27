@@ -34,6 +34,19 @@ export type LiveErrorCode =
   | 'beforeStart'
   | 'beforePrevious';
 
+/** Fixed order: logs record an index into this list instead of a string (SEC-M45-08). */
+export const LIVE_ERROR_CODES: readonly LiveErrorCode[] = [
+  'notFound',
+  'notActive',
+  'unknownStep',
+  'alreadyDone',
+  'invalidFoldIndex',
+  'notAFoldStep',
+  'timeInFuture',
+  'beforeStart',
+  'beforePrevious',
+];
+
 export interface LiveError {
   code: LiveErrorCode;
   /** For `beforeStart` and `beforePrevious`: the earliest allowed instant. */
@@ -85,158 +98,220 @@ export interface LiveOps {
 
 const OPEN: readonly BakeStatus[] = ['scheduled', 'active'];
 
-export function createLiveOps(repos: Repositories, onChange: () => void | Promise<void>): LiveOps {
-  const token = async (bakeId: string, preImage: BakeRowsPreImage): Promise<RevertToken> => {
-    const after = await repos.bakes.get(bakeId);
-    return { bakeId, preImage, postUpdatedAt: after?.bake.updatedAt ?? '' };
-  };
+// One sweep at a time for the whole app: both screens run it on mount and on foreground.
+let sweeping: Promise<string[]> | null = null;
 
+/**
+ * Every operation reads, checks and writes inside one `repos.transaction` (the adapter runs
+ * transactions one at a time), and every status change is a compare-and-set on the status, so a
+ * finish, cancel or sweep that lands in between can't be overwritten (SEC-M45-02).
+ */
+export function createLiveOps(repos: Repositories, onChange: () => void | Promise<void>): LiveOps {
   return {
     async applyEvent(bakeId, event, ctx) {
-      const aggregate = await repos.bakes.get(bakeId);
-      if (!aggregate) return fail('notFound');
-      if (!OPEN.includes(aggregate.bake.status)) return fail('notActive');
-      const { plan, progress, rows } = toBakePlan(aggregate);
-      const row = rows.get(event.key);
-      if (!row) return fail('unknownStep');
-
-      // Bounds live here, not in core (Q-A3): core accepts any `at`.
-      if (event.type === 'stepDone' || event.type === 'stepStarted' || event.type === 'foldDone') {
-        if (event.at > ctx.now) return fail('timeInFuture');
-      }
-      if (event.type === 'stepDone') {
-        const lower = row.actualStartAt
-          ? fromIso(row.actualStartAt)
-          : fromIso(row.plannedStartAt) <= ctx.now
-            ? fromIso(row.plannedStartAt)
-            : null;
-        if (lower !== null && event.at < lower) return fail('beforeStart', lower);
-      }
-      if (event.type === 'stepStarted' && row.bakeItemId && !row.isAlongside) {
-        const previousEnds = aggregate.steps
-          .filter(
-            (s) =>
-              s.bakeItemId === row.bakeItemId &&
-              !s.isAlongside &&
-              s.status === 'done' &&
-              !s.inferredDone &&
-              s.actualEndAt !== null,
-          )
-          .map((s) => fromIso(s.actualEndAt as string));
-        const floor = previousEnds.length > 0 ? Math.max(...previousEnds) : null;
-        if (floor !== null && event.at < floor) return fail('beforePrevious', floor);
-      }
-
-      const recomputed = recomputePlan(plan, progress, event, {
-        now: ctx.now,
-        ...(ctx.quiet ? { quiet: ctx.quiet } : {}),
-        ...(ctx.zone ? { zone: ctx.zone } : {}),
-      });
-      if (!recomputed.ok) return fail(recomputed.error.code);
-      const result = recomputed.value;
-
-      const updates = rowUpdates(rows, result);
-      const patch: BakePatch = {
-        plannedReadyAt: toIso(result.plan.readyAt),
-        ovenSlots: result.plan.slots.map((slot) => ({
-          index: slot.index,
-          startAt: toIso(slot.startAt),
-          endAt: toIso(slot.endAt),
-          loaves: slot.loaves.map((l) => ({ bakeItemId: l.itemId, loaves: l.loaves })),
-        })),
-      };
-      const sequential = row.bakeItemId !== null && !row.isAlongside;
-      if (sequential && event.type !== 'extend' && aggregate.bake.status === 'scheduled') {
-        patch.status = 'active';
-        patch.startedAt = aggregate.bake.startedAt ?? toIso(Math.min(event.at, ctx.now));
-      }
-      if (ctx.finish) {
-        patch.status = 'completed';
-        patch.completedAt = toIso(ctx.now);
-      }
-
-      const preImage = await repos.bakes.snapshotRows(
-        bakeId,
-        updates.map((u) => u.id),
-      );
-      if (!preImage) return fail('notFound');
+      let outcome: LiveResult<ApplyEventValue>;
       try {
-        await repos.transaction(async (tx) => {
+        outcome = await repos.transaction(async (tx): Promise<LiveResult<ApplyEventValue>> => {
+          const aggregate = await tx.bakes.get(bakeId);
+          if (!aggregate) return fail('notFound');
+          if (!OPEN.includes(aggregate.bake.status)) return fail('notActive');
+          const { plan, progress, rows } = toBakePlan(aggregate);
+          const row = rows.get(event.key);
+          if (!row) return fail('unknownStep');
+
+          // Bounds live here, not in core (Q-A3): core accepts any `at`.
+          if (
+            event.type === 'stepDone' ||
+            event.type === 'stepStarted' ||
+            event.type === 'foldDone'
+          ) {
+            if (event.at > ctx.now) return fail('timeInFuture');
+          }
+          if (event.type === 'stepDone') {
+            const lower = row.actualStartAt
+              ? fromIso(row.actualStartAt)
+              : fromIso(row.plannedStartAt) <= ctx.now
+                ? fromIso(row.plannedStartAt)
+                : null;
+            if (lower !== null && event.at < lower) return fail('beforeStart', lower);
+          }
+          if (event.type === 'stepStarted' && row.bakeItemId && !row.isAlongside) {
+            const previousEnds = aggregate.steps
+              .filter(
+                (s) =>
+                  s.bakeItemId === row.bakeItemId &&
+                  !s.isAlongside &&
+                  s.status === 'done' &&
+                  !s.inferredDone &&
+                  s.actualEndAt !== null,
+              )
+              .map((s) => fromIso(s.actualEndAt as string));
+            const floor = previousEnds.length > 0 ? Math.max(...previousEnds) : null;
+            if (floor !== null && event.at < floor) return fail('beforePrevious', floor);
+          }
+
+          const recomputed = recomputePlan(plan, progress, event, {
+            now: ctx.now,
+            ...(ctx.quiet ? { quiet: ctx.quiet } : {}),
+            ...(ctx.zone ? { zone: ctx.zone } : {}),
+          });
+          if (!recomputed.ok) return fail(recomputed.error.code);
+          const result = recomputed.value;
+
+          const updates = rowUpdates(rows, result);
+          const patch: BakePatch = {
+            plannedReadyAt: toIso(result.plan.readyAt),
+            ovenSlots: result.plan.slots.map((slot) => ({
+              index: slot.index,
+              startAt: toIso(slot.startAt),
+              endAt: toIso(slot.endAt),
+              loaves: slot.loaves.map((l) => ({ bakeItemId: l.itemId, loaves: l.loaves })),
+            })),
+          };
+          const sequential = row.bakeItemId !== null && !row.isAlongside;
+          if (sequential && event.type !== 'extend' && aggregate.bake.status === 'scheduled') {
+            patch.status = 'active';
+            patch.startedAt = aggregate.bake.startedAt ?? toIso(Math.min(event.at, ctx.now));
+          }
+          if (ctx.finish) {
+            patch.status = 'completed';
+            patch.completedAt = toIso(ctx.now);
+          }
+
+          const preImage = await tx.bakes.snapshotRows(
+            bakeId,
+            updates.map((u) => u.id),
+          );
+          if (!preImage) return fail('notFound');
+          // Header first, guarded on the status: if it was closed meanwhile, nothing is written.
+          if (!(await tx.bakes.updateIfStatus(bakeId, patch))) return fail('notActive');
           if (updates.length > 0) await tx.bakes.updateSteps(bakeId, updates);
-          await tx.bakes.update(bakeId, patch);
+          const after = await tx.bakes.get(bakeId);
+          return {
+            ok: true,
+            value: {
+              result,
+              revertToken: { bakeId, preImage, postUpdatedAt: after?.bake.updatedAt ?? '' },
+            },
+          };
         });
       } catch (error) {
-        logger.error('live.apply_failed', error, { steps: updates.length });
+        logger.error('live.apply_failed', error);
         throw error;
       }
-      const revertToken = await token(bakeId, preImage);
-      await onChange();
-      await notifyBakeProgressChanged(bakeId, 'event');
-      return { ok: true, value: { revertToken, result } };
+      if (outcome.ok) {
+        await onChange();
+        await notifyBakeProgressChanged(bakeId, 'event');
+      }
+      return outcome;
     },
 
     async revert(revertToken) {
-      const current = await repos.bakes.get(revertToken.bakeId);
-      if (!current || current.bake.updatedAt !== revertToken.postUpdatedAt) {
-        return { ok: false, reason: 'stale' };
-      }
-      await repos.bakes.restoreRows(revertToken.preImage);
+      // The header only restores if nothing has written since (`updated_at` still matches), and
+      // the step rows are restored in that same transaction.
+      const restored = await repos.bakes.restoreRows(
+        revertToken.preImage,
+        revertToken.postUpdatedAt,
+      );
+      if (!restored) return { ok: false, reason: 'stale' };
       await onChange();
       await notifyBakeProgressChanged(revertToken.bakeId, 'revert');
       return { ok: true };
     },
 
     async finish(bakeId, now) {
-      const aggregate = await repos.bakes.get(bakeId);
-      if (!aggregate) return fail('notFound');
-      if (!OPEN.includes(aggregate.bake.status)) return fail('notActive');
-      const preImage = await repos.bakes.snapshotRows(bakeId, []);
-      if (!preImage) return fail('notFound');
-      await repos.bakes.update(bakeId, { status: 'completed', completedAt: toIso(now) });
-      const revertToken = await token(bakeId, preImage);
-      await onChange();
-      await notifyBakeProgressChanged(bakeId, 'finish');
-      return { ok: true, value: { revertToken } };
+      const outcome = await repos.transaction(
+        async (tx): Promise<LiveResult<{ revertToken: RevertToken }>> => {
+          const aggregate = await tx.bakes.get(bakeId);
+          if (!aggregate) return fail('notFound');
+          if (!OPEN.includes(aggregate.bake.status)) return fail('notActive');
+          const preImage = await tx.bakes.snapshotRows(bakeId, []);
+          if (!preImage) return fail('notFound');
+          const ok = await tx.bakes.updateIfStatus(bakeId, {
+            status: 'completed',
+            completedAt: toIso(now),
+          });
+          if (!ok) return fail('notActive');
+          const after = await tx.bakes.get(bakeId);
+          return {
+            ok: true,
+            value: {
+              revertToken: { bakeId, preImage, postUpdatedAt: after?.bake.updatedAt ?? '' },
+            },
+          };
+        },
+      );
+      if (outcome.ok) {
+        await onChange();
+        await notifyBakeProgressChanged(bakeId, 'finish');
+      }
+      return outcome;
     },
 
     async cancel(bakeId, now) {
-      const aggregate = await repos.bakes.get(bakeId);
-      if (!aggregate) return fail('notFound');
-      if (!OPEN.includes(aggregate.bake.status)) return fail('notActive');
-      await repos.bakes.update(bakeId, { status: 'cancelled', cancelledAt: toIso(now) });
-      await onChange();
-      await notifyBakeProgressChanged(bakeId, 'cancel');
-      return { ok: true, value: null };
+      const outcome = await repos.transaction(async (tx): Promise<LiveResult<null>> => {
+        const aggregate = await tx.bakes.get(bakeId);
+        if (!aggregate) return fail('notFound');
+        const ok = await tx.bakes.updateIfStatus(bakeId, {
+          status: 'cancelled',
+          cancelledAt: toIso(now),
+        });
+        return ok ? { ok: true, value: null } : fail('notActive');
+      });
+      if (outcome.ok) {
+        await onChange();
+        await notifyBakeProgressChanged(bakeId, 'cancel');
+      }
+      return outcome;
     },
 
-    async sweep(now) {
-      const open = await repos.bakes.list({ statuses: OPEN });
-      const changed: string[] = [];
-      for (const header of open) {
-        if (fromIso(header.plannedReadyAt) < now - STALE_AFTER_MS) {
-          // Step rows stay as they are: nothing was marked, and nothing is invented.
-          await repos.bakes.update(header.id, {
-            status: 'completed',
-            completedAt: header.plannedReadyAt,
+    sweep(now) {
+      if (sweeping) return sweeping;
+      const run = (async () => {
+        const open = await repos.bakes.list({ statuses: OPEN });
+        const changed: string[] = [];
+        for (const header of open) {
+          // Re-read and write in one transaction, guarded on the status it was read with: a
+          // cancel or finish in between wins and the sweep leaves that bake alone.
+          const didChange = await repos.transaction(async (tx) => {
+            const aggregate = await tx.bakes.get(header.id);
+            if (!aggregate || !OPEN.includes(aggregate.bake.status)) return false;
+            const { bake } = aggregate;
+            if (fromIso(bake.plannedReadyAt) < now - STALE_AFTER_MS) {
+              // Step rows stay as they are: nothing was marked, and nothing is invented.
+              return tx.bakes.updateIfStatus(
+                header.id,
+                { status: 'completed', completedAt: bake.plannedReadyAt },
+                [bake.status],
+              );
+            }
+            if (bake.status === 'scheduled') {
+              const first = aggregate.steps.reduce(
+                (m, s) => Math.min(m, fromIso(s.plannedStartAt)),
+                Number.POSITIVE_INFINITY,
+              );
+              if (Number.isFinite(first) && now >= first) {
+                return tx.bakes.updateIfStatus(
+                  header.id,
+                  { status: 'active', startedAt: toIso(first) },
+                  ['scheduled'],
+                );
+              }
+            }
+            return false;
           });
-          changed.push(header.id);
-        } else if (header.status === 'scheduled') {
-          const aggregate = await repos.bakes.get(header.id);
-          const first = aggregate?.steps.reduce(
-            (m, s) => Math.min(m, fromIso(s.plannedStartAt)),
-            Number.POSITIVE_INFINITY,
-          );
-          if (first !== undefined && Number.isFinite(first) && now >= first) {
-            await repos.bakes.update(header.id, { status: 'active', startedAt: toIso(first) });
-            changed.push(header.id);
-          }
+          if (didChange) changed.push(header.id);
         }
-      }
-      if (changed.length > 0) {
-        await onChange();
-        for (const id of changed) await notifyBakeProgressChanged(id, 'sweep');
-      }
-      return changed;
+        if (changed.length > 0) {
+          await onChange();
+          for (const id of changed) await notifyBakeProgressChanged(id, 'sweep');
+        }
+        return changed;
+      })();
+      sweeping = run.finally(() => {
+        sweeping = null;
+      });
+      return sweeping;
     },
   };
 }

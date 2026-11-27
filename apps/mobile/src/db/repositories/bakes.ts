@@ -15,6 +15,7 @@ import {
   softDeleteWhere,
   toColumns,
   updateRow,
+  updateRowGuarded,
   writeChildren,
   type ChildWrite,
 } from '../sql';
@@ -142,6 +143,27 @@ export function createBakeRepository({ q, atomic, clock, ids }: RepoContext) {
       return toBake(await requireRow<BakeRow>(q, 'bake', id, 'Bake'));
     },
 
+    /**
+     * Compare-and-set for live writes: edits the header only while its status is still one of
+     * `statuses` (default scheduled or active), in the caller's transaction. Returns false when
+     * the guard failed (the bake was finished, cancelled or deleted meanwhile), writing nothing.
+     */
+    async updateIfStatus(
+      id: string,
+      patch: BakePatch,
+      statuses: readonly BakeStatus[] = ['scheduled', 'active'],
+    ): Promise<boolean> {
+      const changes = await updateRowGuarded(
+        q,
+        'bake',
+        { id, deleted_at: null },
+        { status: statuses },
+        toColumns(patch, BAKE_FIELDS),
+        clock.nowIso(),
+      );
+      return changes > 0;
+    },
+
     async updateItem(id: string, patch: BakeItemPatch): Promise<BakeItem> {
       const changes = await updateRow(
         q,
@@ -263,18 +285,27 @@ export function createBakeRepository({ q, atomic, clock, ids }: RepoContext) {
       };
     },
 
-    /** Writes a `snapshotRows` pre-image back in one transaction. */
-    async restoreRows(preImage: BakeRowsPreImage): Promise<void> {
+    /**
+     * Writes a `snapshotRows` pre-image back in one transaction. With `expectedUpdatedAt`, the
+     * header is only restored if it still has that `updated_at` (nothing wrote since), and the
+     * step rows are only touched after that check passes; returns false when it did not.
+     */
+    async restoreRows(preImage: BakeRowsPreImage, expectedUpdatedAt?: string): Promise<boolean> {
       const now = clock.nowIso();
-      await atomic(async (tx) => {
+      return atomic(async (tx) => {
         const changes = await updateRow(
           tx,
           'bake',
-          { id: preImage.bakeId, deleted_at: null },
+          {
+            id: preImage.bakeId,
+            deleted_at: null,
+            ...(expectedUpdatedAt === undefined ? {} : { updated_at: expectedUpdatedAt }),
+          },
           toColumns(preImage.bake, BAKE_FIELDS),
           now,
         );
         if (changes === 0) {
+          if (expectedUpdatedAt !== undefined) return false;
           throw new RepositoryError('notFound', `Bake ${preImage.bakeId} not found.`);
         }
         for (const { id, ...patch } of preImage.steps) {
@@ -289,6 +320,7 @@ export function createBakeRepository({ q, atomic, clock, ids }: RepoContext) {
             throw new RepositoryError('notFound', `Bake step ${id} not found.`);
           }
         }
+        return true;
       });
     },
 

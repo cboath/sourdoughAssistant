@@ -4,6 +4,11 @@ import type { ExpoConfig } from 'expo/config';
 // permanent once the first store upload happens.
 const BUNDLE_ID = 'com.cboath.sourdoughassistant';
 
+// Release builds carry no network permission and no push receiver (SEC-M45-01, ADR 0015): the app
+// makes no network calls, and expo-notifications bundles Firebase Messaging that must stay inert.
+// Development keeps INTERNET for Metro. EAS sets APP_ENV per profile (eas.json).
+const RELEASE = process.env.APP_ENV === 'preview' || process.env.APP_ENV === 'production';
+
 const config: ExpoConfig = {
   name: 'Sourdough Assistant',
   slug: 'sourdough-assistant',
@@ -18,7 +23,21 @@ const config: ExpoConfig = {
     // E2: short home-screen name; the store name stays "Sourdough Assistant".
     infoPlist: { CFBundleDisplayName: 'Sourdough' },
   },
-  android: { package: BUNDLE_ID },
+  android: {
+    package: BUNDLE_ID,
+    // Exact alarms for step reminders (SEC-M45-03). Never USE_EXACT_ALARM: Play restricts it.
+    permissions: ['android.permission.SCHEDULE_EXACT_ALARM'],
+    // AN-01 must verify the MERGED manifest (library manifests can re-add these) and that no
+    // google-services.json is present.
+    ...(RELEASE
+      ? {
+          blockedPermissions: [
+            'android.permission.INTERNET',
+            'com.google.android.c2dm.permission.RECEIVE',
+          ],
+        }
+      : {}),
+  },
   plugins: [
     'expo-router',
     'expo-sqlite',

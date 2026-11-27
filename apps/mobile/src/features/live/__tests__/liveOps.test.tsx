@@ -386,3 +386,64 @@ describe('finish, cancel and sweep', () => {
     );
   });
 });
+
+describe('races (SEC-M45-02)', () => {
+  it('a cancel that lands during a sweep is not undone by it', async () => {
+    const { db, service } = await setup();
+    const bake = await makeBake(db);
+    const original = db.repos.bakes.list.bind(db.repos.bakes);
+    // The sweep has read the bake as scheduled when the baker cancels it.
+    jest.spyOn(db.repos.bakes, 'list').mockImplementation(async (...args) => {
+      const rows = await original(...args);
+      await service.cancel(bake.bake.id, NOW);
+      return rows;
+    });
+    expect(await service.sweep(at('2026-11-27', '04:00'))).toEqual([]);
+    expect((await reload(db, bake.bake.id)).bake.status).toBe('cancelled');
+    jest.restoreAllMocks();
+  });
+
+  it('a finish that races applyEvent leaves a completed bake, whichever lands first', async () => {
+    const { db, service } = await setup();
+    const bake = await makeBake(db);
+    const bulk = stepByName(bake, 'Bulk ferment');
+    const [applied, finished] = await Promise.all([
+      service.applyEvent(
+        bake.bake.id,
+        { type: 'extend', key: bulk.stepKey, minutes: 15 },
+        { now: NOW },
+      ),
+      service.finish(bake.bake.id, NOW),
+    ]);
+    expect(finished.ok).toBe(true);
+    // applyEvent either ran first (and the finish still won) or was refused as notActive.
+    if (!applied.ok) expect(applied.error.code).toBe('notActive');
+    expect((await reload(db, bake.bake.id)).bake.status).toBe('completed');
+  });
+
+  it('two sweeps at once share one run', async () => {
+    const { db, service } = await setup();
+    const bake = await makeBake(db);
+    const now = at('2026-11-27', '04:00');
+    const [a, b] = await Promise.all([service.sweep(now), service.sweep(now)]);
+    expect(a).toEqual([bake.bake.id]);
+    expect(b).toEqual([bake.bake.id]);
+  });
+
+  it('an event on a bake that was finished meanwhile writes nothing', async () => {
+    const { db, service } = await setup();
+    const bake = await makeBake(db);
+    const bulk = stepByName(bake, 'Bulk ferment');
+    await service.finish(bake.bake.id, NOW);
+    const before = await reload(db, bake.bake.id);
+    const result = await service.applyEvent(
+      bake.bake.id,
+      { type: 'extend', key: bulk.stepKey, minutes: 15 },
+      { now: NOW },
+    );
+    expect(result).toEqual({ ok: false, error: { code: 'notActive' } });
+    expect((await reload(db, bake.bake.id)).steps.map((s) => s.plannedEndAt)).toEqual(
+      before.steps.map((s) => s.plannedEndAt),
+    );
+  });
+});

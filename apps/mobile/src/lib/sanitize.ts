@@ -4,11 +4,11 @@
  */
 /* eslint-disable no-control-regex -- removing control characters is the point */
 const UNSAFE_INLINE = new RegExp(
-  '[\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069]',
+  '[\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\u061c\\u180e\\u2060-\\u2064\\ufeff]',
   'g',
 );
 const UNSAFE_NOTES = new RegExp(
-  '[\\u0000-\\u0008\\u000b\\u000c\\u000e-\\u001f\\u007f-\\u009f\\u2028\\u2029\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069]',
+  '[\\u0000-\\u0008\\u000b\\u000c\\u000e-\\u001f\\u007f-\\u009f\\u2028\\u2029\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069\\u061c\\u180e\\u2060-\\u2064\\ufeff]',
   'g',
 );
 /* eslint-enable no-control-regex */

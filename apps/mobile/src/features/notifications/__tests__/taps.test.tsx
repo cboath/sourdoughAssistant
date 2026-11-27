@@ -1,7 +1,7 @@
 import { render } from '@testing-library/react-native';
 import * as Notifications from 'expo-notifications';
 import { routerSpies } from '../../../__tests__/helpers/mockRouter';
-import { useNotificationTaps } from '../hooks/useNotificationTaps';
+import { resetHandledTap, useNotificationTaps } from '../hooks/useNotificationTaps';
 
 jest.mock(
   'expo-router',
@@ -26,6 +26,7 @@ const response = (data: unknown, action = Notifications.DEFAULT_ACTION_IDENTIFIE
   }) as never;
 
 afterEach(() => {
+  resetHandledTap();
   routerSpies.reset();
   jest.clearAllMocks();
 });
@@ -47,6 +48,16 @@ describe('useNotificationTaps', () => {
     await render(<Host />);
     expect(routerSpies.push).not.toHaveBeenCalled();
     expect(routerSpies.replace).toHaveBeenCalledWith(`/bake/${BAKE}?step=${STEP}`);
+  });
+
+  it('does not replay the last tap when the host remounts', async () => {
+    mocked.useLastNotificationResponse.mockReturnValue(
+      response({ v: 1, kind: 'start', bakeId: BAKE, bakeStepId: STEP }),
+    );
+    const first = await render(<Host />);
+    await first.unmount();
+    await render(<Host />);
+    expect(routerSpies.push).toHaveBeenCalledTimes(1);
   });
 
   it('handles each tap once even though the hook keeps returning it', async () => {

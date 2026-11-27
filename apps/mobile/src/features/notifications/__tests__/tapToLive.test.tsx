@@ -3,6 +3,7 @@
  * in the fake OS queue; the tap hook turns it into a route; the real route file validates the params
  * and opens the live screen on that step. T-LIFE-3 and T-LIFE-4 still need a device for the OS half.
  */
+import { resetHandledTap } from '../hooks/useNotificationTaps';
 import { fromIso } from '@sourdough/core';
 import { configure, render, screen } from '@testing-library/react-native';
 import * as Notifications from 'expo-notifications';
@@ -82,6 +83,7 @@ beforeEach(() => {
     .mockReturnValue({ width: 390, height: 844, scale: 3, fontScale: 1 });
 });
 afterEach(() => {
+  resetHandledTap();
   unregisterNotifications();
   clock.now = originalNow;
   clock.zone = originalZone;

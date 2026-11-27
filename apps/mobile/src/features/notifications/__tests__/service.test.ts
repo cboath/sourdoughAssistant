@@ -56,6 +56,43 @@ describe('reconcile', () => {
     expect(sa1(notifier)).toEqual(first);
   });
 
+  it('a rebuild killed part way never leaves the baker with no reminders (SEC-M45-06)', async () => {
+    const { notifier, service } = setup({ bakes: [overnightBake({ startMs: T0 + HOUR })] });
+    await service.reconcile({ mode: 'rebuild' });
+    const before = sa1(notifier);
+    // The app dies on the first cancel of a rebuild: everything wanted must still be pending.
+    const cancel = notifier.cancel.bind(notifier);
+    let killed = false;
+    notifier.cancel = async (id: string) => {
+      killed = true;
+      await cancel(id);
+      throw new Error('killed');
+    };
+    await service.reconcile({ mode: 'rebuild' });
+    expect(sa1(notifier).sort()).toEqual([...before].sort());
+    expect(killed).toBe(false);
+  });
+
+  it('a rebuild schedules before it cancels, and cancels only ids nobody wants', async () => {
+    const { notifier, service } = setup({ bakes: [overnightBake({ startMs: T0 + HOUR })] });
+    notifier.store.set('sa1:stale:old', 'x');
+    const order: string[] = [];
+    const schedule = notifier.schedule.bind(notifier);
+    const cancel = notifier.cancel.bind(notifier);
+    notifier.schedule = async (intent) => {
+      order.push('schedule');
+      await schedule(intent);
+    };
+    notifier.cancel = async (id: string) => {
+      order.push(`cancel:${id}`);
+      await cancel(id);
+    };
+    await service.reconcile({ mode: 'rebuild' });
+    expect(order.filter((o) => o.startsWith('cancel'))).toEqual(['cancel:sa1:stale:old']);
+    expect(order.lastIndexOf('schedule')).toBeLessThan(order.indexOf('cancel:sa1:stale:old'));
+    expect(sa1(notifier)).not.toContain('sa1:stale:old');
+  });
+
   it('is idempotent across rebuilds too: the same ids, no duplicates', async () => {
     const { notifier, service } = setup({ bakes: [overnightBake({ startMs: T0 + HOUR })] });
     await service.reconcile({ mode: 'rebuild' });

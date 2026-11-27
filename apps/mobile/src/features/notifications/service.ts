@@ -104,11 +104,17 @@ export function createNotificationService(deps: NotificationServiceDeps): Notifi
     const desired = new Map(plan.intents.map((i) => [i.id, i]));
     const pendingById = new Map(pending.map((p) => [p.identifier, p]));
 
+    // Changed hashes in a diff are cancelled before scheduling (ADR 0011 section 2); ids nobody
+    // wants are cancelled after it.
+    const cancelFirst = new Set<string>();
     const toCancel = new Set<string>();
     const toSchedule: NotificationIntent[] = [];
     let kept = 0;
+    // Only ids nobody wants are cancelled. A wanted id is scheduled again instead, and the same
+    // id replaces the old request, so a kill between the steps never leaves the baker with no
+    // reminders (SEC-M45-06).
     for (const p of pending) {
-      if (mode === 'rebuild' || !desired.has(p.identifier)) toCancel.add(p.identifier);
+      if (!desired.has(p.identifier)) toCancel.add(p.identifier);
     }
     for (const intent of plan.intents) {
       const existing = pendingById.get(intent.id);
@@ -116,21 +122,25 @@ export function createNotificationService(deps: NotificationServiceDeps): Notifi
         kept += 1;
         continue;
       }
-      // A changed hash is cancelled first, then scheduled, as ADR 0011 section 2 says.
-      if (existing) toCancel.add(intent.id);
+      // Diff keeps ADR 0011 section 2: a changed hash is cancelled, then scheduled. A rebuild
+      // schedules over the same id instead, so there is never a moment with nothing pending.
+      if (existing && mode === 'diff') cancelFirst.add(intent.id);
       toSchedule.push(intent);
     }
 
     let cancelled = 0;
-    for (const id of toCancel) {
-      try {
-        await notifier.cancel(id);
-        cancelled += 1;
-      } catch (error) {
-        logger.warn('notif.cancel_failed');
-        logger.error('notif.cancel_error', error);
+    const cancelIds = async (ids: Iterable<string>) => {
+      for (const id of ids) {
+        try {
+          await notifier.cancel(id);
+          cancelled += 1;
+        } catch (error) {
+          logger.warn('notif.cancel_failed');
+          logger.error('notif.cancel_error', error);
+        }
       }
-    }
+    };
+    await cancelIds(cancelFirst);
     let scheduled = 0;
     let failed = 0;
     for (const intent of toSchedule) {
@@ -142,6 +152,8 @@ export function createNotificationService(deps: NotificationServiceDeps): Notifi
         logger.error('notif.schedule_error', error, { kindIsFold: intent.kind === 'fold' });
       }
     }
+
+    await cancelIds(toCancel);
 
     store.set({
       failedCount: failed,

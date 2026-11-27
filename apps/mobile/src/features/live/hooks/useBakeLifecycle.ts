@@ -12,33 +12,19 @@ import { logger } from '../../../lib/logger';
 import { showSnackbar } from '../../../state/snackbar';
 import { confirm } from '../../../ui/confirm';
 import { haptic } from '../../../ui/haptics';
+import { reportRejected, showUndoSnackbar } from '../feedback';
 import { useBakeService } from '../../schedule/hooks/useScheduleData';
-import type { LiveError, RevertToken } from '../services/liveOps';
+import type { RevertToken } from '../services/liveOps';
 
 export function useBakeLifecycle(options: { closeScreen: boolean }) {
   const service = useBakeService();
   const router = useRouter();
   const { closeScreen } = options;
 
-  const failed = useCallback((error: LiveError) => {
-    logger.warn('live.action_rejected', { code: error.code.length });
-    haptic('warning');
-    showSnackbar({ message: t('live.actionFailed') });
-  }, []);
+  const failed = reportRejected;
 
   const undo = useCallback(
-    (message: string, token: RevertToken) => {
-      showSnackbar({
-        message,
-        actionLabel: t('common.undo'),
-        onAction: () => {
-          haptic('impactLight');
-          void service
-            .revert(token)
-            .catch((error: unknown) => logger.error('live.revert_failed', error));
-        },
-      });
-    },
+    (message: string, token: RevertToken) => showUndoSnackbar(service, message, token),
     [service],
   );
 

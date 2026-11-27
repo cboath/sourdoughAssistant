@@ -61,6 +61,12 @@ describe('parseRouteParams', () => {
 });
 
 describe('cleanPrefill', () => {
+  it('replaces the extra invisible and isolate characters (SEC-M45-05)', () => {
+    expect(cleanPrefill('a\u061cb\u180ec\u2060d\u2064e\ufefff\u2066g\u2069h')).toBe(
+      'a b c d e f g h',
+    );
+  });
+
   it('collapses whitespace and does not split surrogate pairs at the cap', () => {
     expect(cleanPrefill('a   b\tc')).toBe('a b c');
     const cleaned = cleanPrefill('🍞'.repeat(250));

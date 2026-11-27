@@ -149,6 +149,7 @@ export const enLive = {
   'live.gone.cancelled': 'This bake was cancelled.',
   'live.gone.missing': "This bake isn't here anymore.",
   'live.loadError': "Couldn't load this bake.",
+  'live.undoExpired': "Can't undo that anymore.",
   'live.actionFailed': "Couldn't save that. Try again.",
   'live.announce.step': 'Now: {step}. {duration}.',
   'live.announce.combined': '{done} Now: {step}, {duration}.',

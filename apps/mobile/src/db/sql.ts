@@ -69,6 +69,43 @@ export async function updateRow(
   return result.changes;
 }
 
+/**
+ * Like `updateRow`, plus `anyOf` guards (`col IN (...)`) for compare-and-set writes: "only if the
+ * status is still one of these". Every value is a bound parameter; column names are code-owned.
+ * Returns the number of rows changed, so 0 means the guard failed.
+ */
+export async function updateRowGuarded(
+  q: SqlExecutor,
+  table: string,
+  where: Record<string, SqlValue>,
+  anyOf: Record<string, readonly SqlValue[]>,
+  columns: Record<string, SqlValue>,
+  now: string,
+): Promise<number> {
+  const set = { ...columns, updated_at: now };
+  const params: Record<string, SqlValue> = named(set);
+  const conditions = Object.entries(where).map(([col, value]) => {
+    if (value === null) return `${col} IS NULL`;
+    params[`$w_${col}`] = value;
+    return `${col} = $w_${col}`;
+  });
+  for (const [col, values] of Object.entries(anyOf)) {
+    if (values.length === 0) return 0;
+    const names = values.map((value, i) => {
+      params[`$g_${col}_${i}`] = value;
+      return `$g_${col}_${i}`;
+    });
+    conditions.push(`${col} IN (${names.join(', ')})`);
+  }
+  const result = await q.run(
+    `UPDATE ${table} SET ${Object.keys(set)
+      .map((c) => `${c} = $${c}`)
+      .join(', ')} WHERE ${conditions.join(' AND ')}`,
+    params,
+  );
+  return result.changes;
+}
+
 export interface ChildWrite {
   id: string;
   columns: Record<string, SqlValue>;

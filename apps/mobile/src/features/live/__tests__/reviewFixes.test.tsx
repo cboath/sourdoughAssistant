@@ -81,6 +81,29 @@ describe('home card reminders tag (DR2-04)', () => {
   });
 });
 
+describe('a stale Undo says so (SEC-M45-08)', () => {
+  it('shows "Can\'t undo that anymore." and logs an index, not text', async () => {
+    const { showUndoSnackbar } = jest.requireActual('../feedback') as typeof import('../feedback');
+    const { useSnackbarStore } = jest.requireActual(
+      '../../../state/snackbar',
+    ) as typeof import('../../../state/snackbar');
+    const revert = jest.fn().mockResolvedValue({ ok: false, reason: 'stale' });
+    showUndoSnackbar({ revert }, 'Shape done.', {} as never);
+    useSnackbarStore.getState().current?.onAction?.();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(useSnackbarStore.getState().current?.message).toBe("Can't undo that anymore.");
+    expect(useSnackbarStore.getState().current?.actionLabel).toBeUndefined();
+  });
+
+  it('keeps a fixed code list in step with the error type', () => {
+    const { LIVE_ERROR_CODES } = jest.requireActual(
+      '../services/liveOps',
+    ) as typeof import('../services/liveOps');
+    expect(LIVE_ERROR_CODES.indexOf('notActive')).toBe(1);
+    expect(new Set(LIVE_ERROR_CODES).size).toBe(LIVE_ERROR_CODES.length);
+  });
+});
+
 describe('Banner announcements (DR2-05)', () => {
   it('announces a keyed banner once per session, however often it remounts', async () => {
     resetAnnounced();
