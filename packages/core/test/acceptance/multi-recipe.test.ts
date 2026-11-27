@@ -1,8 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- table-driven tests pass loosely typed fixtures */
 /**
  * QA-02: multi-recipe bakes and oven slots (core-cases section 9, ADR 0009).
- * PROVISIONAL (AMB-10, Chris Q8). Owned by CO-03 (multi.ts), which has not landed: planBake throws CoreInvariantError
- * for more than one oven slot today. Skipped unless RUN_CO03=1, e.g.  RUN_CO03=1 npx vitest run test/acceptance/multi-recipe
+ * ADR 0009 Accepted (open-questions B1: last batch, no reheat gap; B7: at most 4 recipes, enforced by the schedule screen). Owned by CO-03 (multi.ts).
  * Slot indexes are 1-based and oven/tail step keys carry ':s<slot>' (per CO-02).
  */
 import { describe, expect, it } from 'vitest';
@@ -20,7 +19,6 @@ import {
   stepOf,
 } from './support/fixtures';
 
-const RUN = true; // CO-03 landed; gate removed by orchestrator
 const FAR_PAST = ms('2025-01-01T00:00:00.000Z');
 const READY = ms(MAY2.readyUtc);
 const NIGHT = { enabled: true, startMin: 1320, endMin: 360 };
@@ -48,7 +46,7 @@ const shifted = (stepId: string, offsetMin: number) =>
 const loafLists = (slots: any[]) =>
   slots.map((s) => s.loaves.map((l: any) => [l.itemId, l.loaves]));
 
-describe.runIf(RUN)('assignOvenSlots (ADR 0009 rule 2, PROVISIONAL)', () => {
+describe('assignOvenSlots (ADR 0009 rule 2)', () => {
   it.each([
     [
       'M3 loaves A,B,C cap 2',
@@ -176,7 +174,7 @@ describe.runIf(RUN)('assignOvenSlots (ADR 0009 rule 2, PROVISIONAL)', () => {
   });
 });
 
-describe.runIf(RUN)('planBake multi-recipe (PROVISIONAL, AMB-10)', () => {
+describe('planBake multi-recipe (ADR 0009)', () => {
   const abc = () => [mk('A'), mk('B'), mk('C')];
 
   it('MUL-01 3 loaves cap 2: A and B share slot 1 at -45 min, C is slot 2 and ends at readyAt', () => {

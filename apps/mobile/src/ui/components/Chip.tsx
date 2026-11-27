@@ -16,10 +16,14 @@ export interface ChipProps {
   /** `input`: shows a trailing remove control as its own button. */
   onRemove?: () => void;
   disabled?: boolean;
+  /** `filter`: one choice in a group (radio) instead of an on/off filter (checkbox). */
+  single?: boolean;
+  /** Spoken name when it differs from the text ("Tag Rye", "Favorites only"). */
+  accessibilityLabel?: string;
   testID?: string;
 }
 
-const VISUAL_HEIGHT = 32;
+const VISUAL_MIN_HEIGHT = 32;
 
 export function Chip({
   label,
@@ -28,6 +32,8 @@ export function Chip({
   onPress,
   onRemove,
   disabled = false,
+  single = false,
+  accessibilityLabel,
   testID,
 }: ChipProps) {
   const { color, space, radius, size } = useTheme();
@@ -36,14 +42,14 @@ export function Chip({
   const isFilter = variant === 'filter';
   const background = isFilter && selected ? color.accentContainer : 'transparent';
   const textColor = isFilter && selected ? 'textOnAccentContainer' : 'textPrimary';
-  const hitExtra = Math.max(0, (size.touchMin - VISUAL_HEIGHT) / 2);
+  const hitExtra = Math.max(0, (size.touchMin - VISUAL_MIN_HEIGHT) / 2);
 
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
       <Pressable
         testID={testID}
-        accessibilityRole={isFilter ? 'checkbox' : 'button'}
-        accessibilityLabel={label}
+        accessibilityRole={isFilter ? (single ? 'radio' : 'checkbox') : 'button'}
+        accessibilityLabel={accessibilityLabel ?? label}
         accessibilityState={isFilter ? { checked: selected, disabled } : { disabled }}
         disabled={disabled || !onPress}
         onPress={onPress}
@@ -51,7 +57,8 @@ export function Chip({
         {...focus.handlers}
         style={[
           {
-            height: VISUAL_HEIGHT,
+            minHeight: VISUAL_MIN_HEIGHT,
+            paddingVertical: space.xs,
             flexDirection: 'row',
             alignItems: 'center',
             gap: space.xs,
@@ -78,7 +85,8 @@ export function Chip({
           hitSlop={{ top: hitExtra, bottom: hitExtra }}
           style={{
             width: size.touchMin,
-            height: VISUAL_HEIGHT,
+            minHeight: VISUAL_MIN_HEIGHT,
+            paddingVertical: space.xs,
             alignItems: 'center',
             justifyContent: 'center',
           }}

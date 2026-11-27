@@ -60,7 +60,7 @@ Hybrid logical clocks would remove guards 1 and 2. That's more machinery than a 
 | Server purge: DynamoDB TTL attribute `purgeAt = deletedAt + 180 days` on recipe, bake, bake-child and price-history tombstones only | Free deletes. Items with no `purgeAt` are never expired |
 | **Stale-device resync:** the pull cursor carries the time it was issued. If it's older than `180 days − 7 days`, the server answers `410 RESYNC`. The client then does a full pull and hard-deletes local rows that aren't dirty and aren't on the server | Otherwise a device offline longer than the retention window never learns about purged deletions and pushes them back to life |
 | Pull applier: if a `bake_item.recipe_id` points at a recipe that isn't present locally, set it to `NULL` | It is provenance only (data-model §2), and the snapshot is authoritative. This avoids an FK failure when a recipe tombstone was purged before a new device joined |
-| **Restore while signed in** (v1.1): a full restore hard-deletes and leaves no tombstones, so under sync it behaves as "merge with server", not "replace" | Needs a product decision (§8 Q1). Whatever is decided, restore must reset the local cursor and mark every restored row dirty |
+| **Restore while signed in** (v1.1): a full restore hard-deletes and leaves no tombstones, so under sync it behaves as "merge with server", not "replace" | Needs a product decision (§9 Q1 = `docs/open-questions.md` F1, **open for v1.1**). Whatever is decided, restore must reset the local cursor and mark every restored row dirty |
 
 ## 4. Conflict resolution
 
@@ -192,7 +192,7 @@ Common attributes on every synced item: `type`, `id`, `updatedAt` (client, after
 | **N2 (should, not sync)** | **`priced_at` must be the *local* calendar date, not the UTC date.** `pantry.create` and `pantry.update` default it with `utcDate(clock.nowIso())` (`repositories/context.ts`). data-model.md §1 defines `priced_at` as a local date. For a US baker after about 4 to 7 pm local time, the stored date is tomorrow. Fix: the service layer passes the local date (the device zone from `expo-localization`), or the repo takes a `today()` from an injectable clock that knows the zone | **RN-02** | Not a sync blocker, but wrong dates written in v1 can't be repaired later because the zone isn't stored with the row |
 | **N3 (should)** | **Test the aggregate-version invariant:** any change to `recipe_ingredient` or `step` bumps `recipe.updated_at` in the same transaction (assert it for `update` with a child-only patch, for `softDelete`, and for a child revive). Add a short comment in `sql.ts` that every write must go through these helpers, because v1.1 hooks `dirty` there | **RN-02** (tests); **mobile-solutions-architect** adds one line to ADR 0004 or data-model.md §4 | It's the basis of aggregate LWW (§4.2). A test now stops M3/M4 code from adding a child-only write path that would silently break sync later |
 | N4 (optional) | Derive `bake_step.id` deterministically from `(bake_id, step_key)` (UUID v5) when RN-06 materializes the plan | **RN-06** (not built yet) | It makes the non-partial `bake_step_key_uq` unable to collide across devices. It's free now because the bake service isn't written yet. Skip it if inconvenient: bakes are single-device in practice and in-flight bakes are short-lived |
-| N5 (optional) | Split pantry "archived" from "deleted": add `archived_at`, and keep `deleted_at` for real deletion | **mobile-solutions-architect** (decide), **RN-02** (migration 0002) | The meaning is cleaner, and pantry tombstones become purgeable. Safe to defer, because the §3 rule "never purge pantry tombstones" covers it, and later it's a single additive column plus a copy |
+| N5 (optional), **decided: deferred** | Split pantry "archived" from "deleted": add `archived_at`, and keep `deleted_at` for real deletion | **mobile-solutions-architect** decided (ADR 0004): v1 keeps `deleted_at` as "archived", with no schema change. RN-02 has nothing to do in v1 | The meaning is cleaner, and pantry tombstones become purgeable. Safe to defer, because the §3 rule "never purge pantry tombstones" covers it, and later it's a single additive column plus a copy |
 
 ### Safe to defer to v1.1 (additive, no rewrite)
 
@@ -250,9 +250,11 @@ The average user is assumed at about 25% of the heavy profile above.
 
 ## 9. Open questions for v1.1 (not blocking v1)
 
-1. **Restore while signed in:** should restoring a backup *replace* the cloud copy (the server tombstones everything not in the backup) or *merge* with it (the default behavior if nothing special is done, §3)?
-2. **Notifications on multiple devices:** when a bake syncs to a second phone or tablet, should that device also schedule its local reminders? The default would be yes on all devices, which means double alerts. A per-bake "notify on this device" setting would be an additive, device-local column.
-3. **Concurrent recipe edits:** is "last save wins the whole recipe" acceptable, or should a conflicted copy be kept (§4.2)?
+These are `docs/open-questions.md` **F1 to F3**. Chris has confirmed they **stay open until v1.1**. The working defaults listed there (F1 not decided, F2 rings on both devices, F3 last save wins) are **not** decisions.
+
+1. **Restore while signed in** (F1): should restoring a backup *replace* the cloud copy (the server tombstones everything not in the backup) or *merge* with it (the default behavior if nothing special is done, §3)?
+2. **Notifications on multiple devices** (F2): when a bake syncs to a second phone or tablet, should that device also schedule its local reminders? The default would be yes on all devices, which means double alerts. A per-bake "notify on this device" setting would be an additive, device-local column.
+3. **Concurrent recipe edits** (F3): is "last save wins the whole recipe" acceptable, or should a conflicted copy be kept (§4.2)?
 
 ## Sources
 

@@ -1,4 +1,5 @@
-import { Pressable, View } from 'react-native';
+import { useEffect } from 'react';
+import { AccessibilityInfo, Pressable, View } from 'react-native';
 import { useTheme } from '../theme';
 import type { ColorTokens } from '../theme/tokens';
 import { t } from '../../lib/i18n';
@@ -45,6 +46,13 @@ export function Banner({
 }: BannerProps) {
   const { color, space, radius, size } = useTheme();
   const style = STYLES[variant];
+  // `role="alert"` does nothing on iOS, so a warning or error is also announced when it first appears.
+  const urgent = variant === 'warning' || variant === 'danger';
+  useEffect(() => {
+    if (urgent) AccessibilityInfo.announceForAccessibility(message);
+    // Only the first appearance announces.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const actionHeight = tier === 'kitchen' ? size.touchKitchen : size.touchMin;
   return (
     <View

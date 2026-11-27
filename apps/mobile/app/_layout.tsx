@@ -11,7 +11,7 @@ import { useStackScreenOptions } from '../src/ui/navigation';
 export { RouteErrorBoundary as ErrorBoundary };
 
 // A cold start from a notification or deep link opens the tabs first, so back returns to Bakes.
-export const unstable_settings = { initialRouteName: '(tabs)' };
+export const unstable_settings = { anchor: '(tabs)' };
 
 // Keep the native splash up until the DB gate has settled (architecture section 12, step 1).
 SplashScreen.preventAutoHideAsync().catch((error: unknown) =>

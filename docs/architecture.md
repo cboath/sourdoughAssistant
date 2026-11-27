@@ -4,7 +4,12 @@
 
 Companion docs: `docs/data-model.md` (SQLite schema), `docs/core-api.md` (`packages/core` contract), and `docs/adr/0001` to `0015`.
 
-Items marked **PROVISIONAL** depend on an open question for Chris (plan section 6). The default is chosen and work proceeds; changing it later is a data or config change unless noted.
+**Status:** Chris answered the open questions on 2026-11-26 (`docs/open-questions.md`). Every former "provisional" item below is now a **decision** and cites its question ID. Still open:
+- the privacy-policy contact email (A8, asked again at RE-03)
+- the exact test devices (A7, which doesn't affect the OS minimums)
+- the v1.1 sync questions F1 to F3
+
+Placeholders (D1 seed content, E1 brand) are decided to stay until Chris supplies replacements.
 
 ---
 
@@ -13,7 +18,7 @@ Items marked **PROVISIONAL** depend on an open question for Chris (plan section 
 | Concern | Decision | ADR |
 |---|---|---|
 | Framework | Expo SDK 58 (RN 0.88, React 19.3, New Architecture, Hermes), TypeScript strict, dev builds (no Expo Go), CNG | 0001 |
-| Min OS | iOS 18.0; Android minSdk 31, targetSdk 36, compileSdk 37 (**PROVISIONAL**, Q10) | 0001 |
+| Min OS | iOS 18.0; Android minSdk 31 (Android 12), targetSdk 36, compileSdk 37 (decided, open-questions decision record / A7) | 0001 |
 | Navigation | expo-router, 4 tabs plus root-level modals; deep links limited to an allowlist through `+native-intent.tsx`; scheme `com.cboath.sourdoughassistant` (section 4) | here |
 | State | TanStack Query over local repositories; Zustand for settings, drafts and permission status | 0002 |
 | Storage | expo-sqlite, plain SQL, typed repositories, forward-only migrations, STRICT tables | 0003 |
@@ -21,14 +26,14 @@ Items marked **PROVISIONAL** depend on an open question for Chris (plan section 
 | Time | Elapsed-minute durations, UTC instants, local display in the current zone | 0005 |
 | Money | Integer minor units; round half up once per line; markup in basis points | 0006 |
 | Levain | One line, hydration %, flour pantry item; water part free | 0007 |
-| Temperature | Multiplier table at a 24 °C reference, 5-min rounding, clamped (**PROVISIONAL**, Q7) | 0008 |
-| Multi-recipe | Greedy oven slots; last slot cools at the ready time; no reheat gap (**PROVISIONAL**, Q8) | 0009 |
+| Temperature | Multiplier table at a 24 °C reference, 5-min rounding, clamped; unit from locale; starts "Not set" (decided, B2, D2, B6) | 0008 |
+| Multi-recipe | Greedy oven slots; last slot cools at the ready time; no reheat gap; max 4 recipes (decided, B1, B7) | 0009 |
 | Scheduler rules | Alongside alignment, folds, quiet hours, too soon, live recompute (pure shift) | 0010 |
 | Notifications | Deterministic ids, single-flight idempotent reconcile, iOS budget 60 plus a sentinel, Android `alarmClock` delivery | 0011 |
 | Backup | Versioned JSON, Zod-validated, all-or-nothing replace, safety export | 0012 |
 | DB tests | Jest `db` project on `node:sqlite` in memory through an adapter interface | 0013 |
 | Bakes | Recipe and cost snapshots, materialized `bake_step` plan | 0014 |
-| Privacy and ops | No analytics or crash SDK; local diagnostics; compile-time flags; unencrypted SQLite accepted; OS backups on, with exclusions; **OTA (`expo-updates`) OPEN for Chris, building without it in the meantime** | 0015 |
+| Privacy and ops | No analytics or crash SDK; local diagnostics; compile-time flags; unencrypted SQLite accepted; OS backups on, with exclusions; **no OTA (`expo-updates`) in v1, zero network calls** (decided, A6); privacy policy on GitHub Pages (A8; contact email TBD at RE-03) | 0015 |
 
 ## 2. Shared assumptions with `cloud-infrastructure-architect`
 
@@ -311,9 +316,9 @@ Every method invalidates `pantry.all` and `recipes.all`.
 - **Money (ADR 0006):** minor units. `lineCents = roundHalfUp(price × grams / packageGrams)`. Batch = sum of rounded lines. Per loaf = roundHalfUp(batch / loaves). Sell price comes from the unrounded per-loaf cost, as a markup in basis points.
 - **Levain (ADR 0007):** split by hydration. The flour part is billed at the pantry flour price and the water is free. Baker's % uses total flour including levain flour.
 - **Scaling (ADR 0010 section 8):** whole grams, half up. A non-zero amount becomes at least 1 g. The dough-weight target is per loaf.
-- **Temperature (ADR 0008, PROVISIONAL):** a 1.09^(24−T) table, applied only to `tempSensitive` steps, rounded to 5 min and clamped. Sliders override it.
+- **Temperature (ADR 0008, decided B2):** a 1.09^(24−T) table, applied only to `tempSensitive` steps, rounded to 5 min and clamped. Sliders override it.
 - **Scheduler (ADR 0010):** backward or forward chain; alongside `endsAtStart`/`startsAtStart`/`endsAtEnd`; fold i at start + (i−1)·interval; quiet-hours window `[start, end)` for step starts and folds; too-soon gives the earliest time at the chosen durations; live recompute is a pure shift with explicit "Hold ready time" and "+15 min" actions.
-- **Oven slots (ADR 0009, PROVISIONAL):** greedy fill in item order, the last slot cools at the ready time, slots back to back, one merged preheat.
+- **Oven slots (ADR 0009, decided B1, B7):** greedy fill in item order, the last slot cools at the ready time, slots back to back with no gap, one merged preheat, at most 4 recipes per bake.
 
 ## 9. Notifications
 
@@ -376,23 +381,23 @@ Single-recipe JSON and plain text (our own grammar only). Import creates new ids
 | Import (file picker) | `expo-document-picker` | none (no iCloud container; `usesIcloudStorage` off) | none (SAF) | |
 | Locale, currency, zone | `expo-localization` | none | none | |
 | Hashing, UUIDs | `expo-crypto` | none | none | |
-| OTA updates | `expo-updates`: **OPEN (H1). Not included until Chris decides** | under (b): App Privacy "Device ID" + `PrivacyInfo.xcprivacy` entry | under (a): `INTERNET` blocked in `preview` and `production`; under (b): `INTERNET` + Data safety "Device or other IDs" | ADR 0015 section 5 |
+| OTA updates | **Not used in v1** (decided, A6): no `expo-updates` | none | `INTERNET` blocked in `preview` and `production` (kept for `development`/Metro) | ADR 0015 section 5 |
 | Calendar (S-10, Could) | `expo-calendar` (only if shipped) | `NSCalendarsWriteOnlyAccessUsageDescription`: "Sourdough Assistant adds your bake steps to the calendar you choose." | `READ_CALENDAR`, `WRITE_CALENDAR` | off by default (`flags.calendarExport`) |
 
 **Not used in v1** (so no permissions for them): camera, photos, location, microphone, contacts, biometrics, background fetch/tasks, push, Bluetooth, critical alerts.
 
-**Android blocked permissions** (AN-02 sets these in `android.blockedPermissions`): `READ_EXTERNAL_STORAGE`, `WRITE_EXTERNAL_STORAGE`, `SYSTEM_ALERT_WINDOW`, `USE_EXACT_ALARM`, `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`, `READ_MEDIA_*`, `com.google.android.gms.permission.AD_ID`. Also `INTERNET` in the `preview` and `production` profiles if H1 option (a) is chosen.
+**Android blocked permissions** (AN-02 sets these in `android.blockedPermissions`): `READ_EXTERNAL_STORAGE`, `WRITE_EXTERNAL_STORAGE`, `SYSTEM_ALERT_WINDOW`, `USE_EXACT_ALARM`, `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`, `READ_MEDIA_*`, `com.google.android.gms.permission.AD_ID`, and `INTERNET` in the `preview` and `production` profiles (A6).
 
 **Android backup rules** (AN-02, ADR 0015 section 6): leave out `SQLite/backups/`, `backups/` and `diagnostics.log`.
 
 **iOS privacy manifest** (IO-02): aggregate the required-reason APIs from the Expo modules (UserDefaults CA92.1, file timestamp C617.1, system boot time 35F9.1, disk space E174.1 as applicable).
-- Data collection: none under H1 option (a). Under (b), Device ID (app functionality, not linked, not tracking).
+- Data collection: none ("Data Not Collected", A6). The forms are filled in at M6 (A3/A4).
 - `ITSAppUsesNonExemptEncryption = false`.
 - Don't set `UIFileSharingEnabled` or `LSSupportsOpeningDocumentsInPlace`.
 
 **Runtime dependencies (apps/mobile):**
 - expo, expo-router, react-native-screens, react-native-safe-area-context
-- expo-sqlite, expo-notifications, expo-localization, expo-keep-awake, expo-sharing, expo-file-system, expo-document-picker, expo-crypto, expo-battery, expo-splash-screen, expo-dev-client (`development` profile only), expo-build-properties (config); `expo-updates` only if H1 option (b) is chosen
+- expo-sqlite, expo-notifications, expo-localization, expo-keep-awake, expo-sharing, expo-file-system, expo-document-picker, expo-crypto, expo-battery, expo-splash-screen, expo-dev-client (`development` profile only), expo-build-properties (config). **No** `expo-updates` (A6)
 - @tanstack/react-query, zustand, react-hook-form, @hookform/resolvers, zod
 - @shopify/flash-list
 - @sourdough/core
@@ -433,7 +438,7 @@ Any new dependency is checked for network calls (ADR 0015).
 
 ## 14. Offline strategy
 
-The app is offline by construction. Every feature reads and writes local SQLite, and all reminders are local. There are no retries, queues or optimistic-sync concerns in v1. Under H1 option (a), the app makes **no network calls at all**. Under (b), the only network call is the non-blocking `expo-updates` check. In v1.1, the sync engine plugs in at the service layer, with an outbox, push/pull, LWW, and query invalidation after a pull, without touching the UI.
+The app is offline by construction. Every feature reads and writes local SQLite, and all reminders are local. There are no retries, queues or optimistic-sync concerns in v1. Release builds make **no network calls at all** (no `expo-updates`, A6). In v1.1, the sync engine plugs in at the service layer, with an outbox, push/pull, LWW, and query invalidation after a pull, without touching the UI.
 
 ## 15. Logging, analytics, feature flags
 
@@ -443,7 +448,7 @@ See ADR 0015:
   - `console.*` is stripped in release builds.
 - **Analytics:** none, and no crash SDK.
 - **Feature flags:** compile-time `src/lib/flags.ts`.
-- **OTA: OPEN (SEC-01 H1).** Builds go without `expo-updates` until Chris picks (a) "drop it for v1" (recommended) or (b) "keep and declare". With (b), the setup is a fingerprint runtime, the `preview` channel, an `ON_LOAD` check, and no rollback across migrations.
+- **OTA: none in v1** (decided, A6; SEC-01 H1 option (a)). Updates ship only as new builds. Revisit with v1.1 sync.
 - **Data at rest:** unencrypted SQLite, accepted (SEC-01 L1). OS backups stay on with exclusions (L2). Both are in ADR 0015.
 
 ## 16. Testing setup
@@ -483,7 +488,7 @@ module.exports = {
 | Task | Change |
 |---|---|
 | RN-01 | Already on SDK 58 and `@sourdough/core`; keep it. Add `.nvmrc` = 24. Move the Jest config into `jest.config.js` with two projects (or RN-02 does this). |
-| RE-01 | CI Node 24. Record the bundle size. `expo-build-properties`: iOS 18.0, Android minSdk 31 (provisional). |
+| RE-01 | CI Node 24. Record the bundle size. `expo-build-properties`: iOS 18.0, Android minSdk 31 (decided, A7). |
 | RN-02 | Implement `docs/data-model.md` exactly. Adapter interface + `node:sqlite` test adapter. Safety copy + downgrade guard. Dev-only on-device self-test. |
 | RN-03 | Seed uses `seed_key`, never recreates deleted seeds. Template from data-model section 5. Settings defaults: markup 20000 bps, heads-up 10, quiet 22:00 to 06:00, oven 1, reheat 0. |
 | RN-04 | Tokens at `apps/mobile/src/ui/theme/tokens.ts` (confirmed). Route skeleton per section 4: **4 tabs including Settings**. |
@@ -494,8 +499,8 @@ module.exports = {
 | DS-03 | The last-fold button is "Fold 4 of 4 done" plus a secondary "Start bulk now". The live view shows the new ready time after early or late completion. Add "Hold ready time" and "+15 min". Add "clocks change tonight" and "Kitchen is cold: capped" copy. Add a "partial cost" state, "<1¢" lines, and "1001 g (target 1000 g)". |
 | IO-01 | Time-sensitive entitlement. Check whether a free personal team can sign it. Strip `aps-environment` if it's added. |
 | AN-01 | Verify that `delivery: 'alarmClock'` delivers on time under battery saver, after a reboot and after an update. Config plugin only if needed. |
-| QA-01/02 | Use the AMB decisions in ADRs 0005 to 0010. Expected values that depend on Q7 or Q8 stay marked provisional. |
-| SEC-01 | Done. Findings L1, L2, L3 and M2 to M4 are adopted in ADRs 0003, 0011, 0012 and 0015. H1 is open for Chris. |
+| QA-01/02 | Use the AMB decisions in ADRs 0005 to 0010. The values that depended on the temperature table or oven slots are now final (open-questions B2, B1). |
+| SEC-01 | Done. Findings L1, L2, L3 and M2 to M4 are adopted in ADRs 0003, 0011, 0012 and 0015. H1 is resolved as option (a), no `expo-updates` (A6). |
 | CL-01 | `docs/data-model.md` section 4, plus section 2 of this doc. `installId` survives an OS restore, so it isn't a unique device id (ADR 0015 section 6). |
 
 **Follow-up batch (after DS-02, SEC-01 and RN-02 review):**
@@ -509,8 +514,8 @@ module.exports = {
 | RN-07 | Android channel lock-screen visibility is **PRIVATE**. Validate the payload before navigating. Cap and clean the text to 100 characters. Check exact-alarm permission before choosing `alarmClock`. |
 | RN-09 | ADR 0012 caps: backup 10 MB, recipe 1 MB, text 64 KB, 500 lines, 500 characters per line. Size from `getInfoAsync` after copying. Strict, fully specified Zod. Sanitizing. Per-table row caps. Unique ids and anchor checks. The exporter self-validates. Counts on the confirm screen are computed from the data. |
 | CO-02 / CO-03 | No signature change. `validateSteps` must not recurse, and plan functions must validate first (core-api section 5.1). |
-| RE-01 | Scheme `com.cboath.sourdoughassistant` (done). Don't add `expo-updates`, `runtimeVersion` or channels while H1 is open. `npm audit` in CI. `expo-dev-client` in `development` only. |
-| AN-02 / IO-02 | Backup-exclusion rules for `SQLite/backups/`, `backups/` and `diagnostics.log`. Block `AD_ID`. Privacy answers wait on H1. |
+| RE-01 | Scheme `com.cboath.sourdoughassistant` (done). Don't add `expo-updates`, `runtimeVersion` or channels (decided, A6). Block `INTERNET` in `preview`/`production`. `npm audit` in CI. `expo-dev-client` in `development` only. |
+| AN-02 / IO-02 | Backup-exclusion rules for `SQLite/backups/`, `backups/` and `diagnostics.log`. Block `AD_ID`. Privacy answers: "Data Not Collected" / "No data collected" (A6), filled in at M6 (A3/A4). |
 | DS-03 | "Uses the recipe's dough weight" (bakes scale by loaves only). |
 
 **Follow-up batch (after DS-03 and DS-04):**
@@ -519,19 +524,28 @@ module.exports = {
 |---|---|
 | **CO-03** | **Core change:** `PlannedStep.name` stays the plain template name, with no "(1 of 3 loaves: slot 2)" suffix (ADR 0009 §6, core-api §5.6). Update the affected tests. |
 | RN-06 / RN-08 | `applyEvent` returns a `revertToken`; `revert(token)` works on the latest event only. Past-time bounds are checked in `bakeService`. `bakeService.sweep(now)` handles auto-activation and auto-completion after 12 h. Repo `snapshotRows`/`restoreRows`. `overlap.ts` and `labels.ts` helpers. Save the bake before the primers. Plan-screen params. Budget dry run on open, on item or loaf changes, and on confirm. The live view writes `keepAwakeDefault`. No schema change. |
-| RN-07 | `ready` kind (non-critical tier, behind `flags.readyNotification`). `satest:` test reminder outside the `sa1:` namespace. Titles built from `stepLabel`. |
+| RN-07 | `ready` kind (non-critical tier, behind `flags.readyNotification`, **default `false`**, B8). `satest:` test reminder outside the `sa1:` namespace. Titles built from `stepLabel`. |
 | RN-09 | The export self-check includes the 10 MB size cap. On restore: currency override (keep prices in their original currency + banner) and the `onboardingCompletedAt` fix-up. `app_meta.lastBackupExportedAt` / `lastRestoreSafetyAt`. `useImportSession` handoff. |
 | RN-10 | Onboarding has 3 steps (no notifications step) and offers "Restore a backup". `src/lib/locale.ts` currency = `currency_override ?? device`. Settings, Cost shows the override read-only. |
 | RN-04 | `orientation: 'default'` (landscape allowed). Logger never records money amounts. |
 
-## 19. Provisional decisions waiting on Chris
+## 19. Chris's decisions (`docs/open-questions.md`, answered 2026-11-26)
 
-| Q | Default used | Where |
+| ID | Decision | Where |
 |---|---|---|
-| Q1/Q2 app name, bundle id | Scheme `com.cboath.sourdoughassistant` follows the proposed bundle id; if the bundle id changes, the scheme changes with it | section 4 |
-| **H1 (SEC-01) OTA updates** | **OPEN.** (a) drop `expo-updates` for v1 (recommended) or (b) keep it and declare the Device ID. Building as (a) until Chris decides | ADR 0015 section 5 |
-| Q6 seed content | Generic formulas (R-HYD amounts) + illustrative prices | data-model section 5 |
-| Q7 temperature table, °C/°F | ADR 0008 table; unit from locale | ADR 0008 |
-| Q8 slot target, reheat gap | Last slot cools at the ready time; gap 0 (setting) | ADR 0009 |
-| Q10 devices | iOS 18.0 / Android API 31 | ADR 0001 |
-| (existing calculator) markup default | 200% markup on cost, no rounding | ADR 0006 |
+| A1, A2, E2 | "Sourdough Assistant" (home screen: "Sourdough"); bundle id and scheme `com.cboath.sourdoughassistant` | section 4 |
+| A3, A4 | No Apple Developer or Play Console enrollment until M6; free install routes until then | ADR 0015 section 9, ADR 0011 section 5 |
+| A5 | EAS free tier, with local builds as the fallback | RE tasks |
+| A6 (SEC-01 H1) | **No `expo-updates` in v1**; "Data Not Collected" | ADR 0015 section 5 |
+| A7 | Minimum iOS 18 / Android 12 decided; **exact test devices still deferred** | ADR 0001 |
+| A8 | Privacy policy on GitHub Pages; **contact email still TBD** (asked at RE-03; never filled in by agents) | ADR 0015 section 9 |
+| B1, B7 | Last batch cooled at the ready time, no reheat gap; max 4 recipes | ADR 0009 |
+| B2, B6, D2 | Temperature table as proposed (tune later); starts "Not set"; units from locale | ADR 0008 |
+| B3 | Elapsed-time model | ADR 0005 |
+| B4, B9, B5, D3 | Pure-shift recompute with "Hold" and "+15 min"; overtime waits for Done; cold ferment 12 to 24 h (no template change); quiet hours on, 22:00 to 06:00 | ADR 0010 |
+| B8 | Ready notification behind `flags.readyNotification`, **off by default** | ADR 0011 |
+| C1, C2 | 200% markup on cost; no price rounding | ADR 0006 |
+| C3, C4, C5 | Per 100 g (metric) / per lb (US); water free and levain water always free; recipe export leaves prices out | DS-02, ADR 0007, ADR 0012 |
+| D1, E1 | Seed recipes and prices, palette and icon **stay placeholders** until Chris supplies replacements | data-model section 5 |
+| D4, D5, D6 | Default ready time = last bake's time of day, else 10:00; keep screen on; finished bakes leave home | DS-03, data-model section 2 |
+| **F1 to F3** | **Open for v1.1:** restore while signed in, multi-device alerts, concurrent edits | `docs/sync-readiness.md` section 9 |

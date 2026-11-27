@@ -11,6 +11,24 @@ export const UNIT_GROUPS: ReadonlyArray<{ key: MessageKey; units: readonly Unit[
   { key: 'unit.group.count', units: ['each'] },
 ];
 
+/** Short display form of a unit ("fl oz", not "floz"). */
+export const UNIT_SHORT: Record<Unit, string> = {
+  g: 'g',
+  kg: 'kg',
+  oz: 'oz',
+  lb: 'lb',
+  ml: 'ml',
+  l: 'l',
+  tsp: 'tsp',
+  tbsp: 'tbsp',
+  cup: 'cup',
+  floz: 'fl oz',
+  qt: 'qt',
+  gal: 'gal',
+  each: 'each',
+};
+export const unitShort = (unit: Unit): string => UNIT_SHORT[unit];
+
 export const unitName = (unit: Unit): string => t(`unit.${unit}` as MessageKey);
 
 export interface UnitPickerProps {
@@ -26,7 +44,7 @@ export interface UnitPickerProps {
 export function UnitPicker({ visible, value, onSelect, onClose, units }: UnitPickerProps) {
   return (
     <Sheet visible={visible} onClose={onClose} title={t('amount.pickUnit')}>
-      <View>
+      <View accessibilityRole="radiogroup">
         {UNIT_GROUPS.map((group) => {
           const offered = group.units.filter((u) => !units || units.includes(u));
           if (offered.length === 0) return null;
@@ -37,7 +55,8 @@ export function UnitPicker({ visible, value, onSelect, onClose, units }: UnitPic
                 <ListRow
                   key={unit}
                   variant="selectable"
-                  title={`${unit} · ${unitName(unit)}`}
+                  selectionMode="single"
+                  title={`${unitShort(unit)} · ${unitName(unit)}`}
                   checked={unit === value}
                   onPress={() => {
                     onSelect(unit);

@@ -12,7 +12,8 @@ import {
   type UnitSystem,
 } from '@sourdough/core';
 import type { PantryItem, PriceHistoryEntry } from '../../db/types';
-import { t, type MessageKey } from '../../lib/i18n';
+import { t, tp, type MessageKey } from '../../lib/i18n';
+import { UNIT_SHORT } from '../../ui/components/UnitPicker';
 import { formatPercent } from '../recipes/format';
 
 export interface PriceContext {
@@ -23,22 +24,7 @@ export interface PriceContext {
 
 export type ItemPriceStatus = 'unpriced' | 'free' | 'priced' | 'needsDensity' | 'needsEach';
 
-export const UNIT_SHORT: Record<Unit, string> = {
-  g: 'g',
-  kg: 'kg',
-  oz: 'oz',
-  lb: 'lb',
-  ml: 'ml',
-  l: 'l',
-  tsp: 'tsp',
-  tbsp: 'tbsp',
-  cup: 'cup',
-  floz: 'fl oz',
-  qt: 'qt',
-  gal: 'gal',
-  each: 'each',
-};
-
+export { UNIT_SHORT };
 /** The item as a core package, or null when it has no price. */
 export function pricedPackage(
   item: Pick<
@@ -136,7 +122,8 @@ export function formatSize(size: number, locale: string): string {
 
 /** "5 lb" */
 export function sizeText(size: number, unit: Unit, locale: string): string {
-  return `${formatSize(size, locale)} ${UNIT_SHORT[unit]}`;
+  const label = unit === 'cup' ? tp('unitShort.cup', size === 1 ? 1 : 2) : UNIT_SHORT[unit];
+  return `${formatSize(size, locale)} ${label}`;
 }
 
 /** The size in the other measuring system for a weight package ("2.27 kg"), or null. */
@@ -227,6 +214,23 @@ export function priceChangeText(change: PriceChange, locale: string): string | n
     case 'wasFree':
       return t('pantry.detail.wasFree');
     default:
-      return null;
+      return '–';
+  }
+}
+
+/** The currency's symbol for a money field prefix ("$"). */
+export function currencySymbol(currency: string, locale: string): string {
+  const part = new Intl.NumberFormat(locale, { style: 'currency', currency })
+    .formatToParts(0)
+    .find((p) => p.type === 'currency');
+  return part?.value ?? currency;
+}
+
+/** "US dollars" for the money field's spoken label. */
+export function currencyName(currency: string, locale: string): string {
+  try {
+    return new Intl.DisplayNames(locale, { type: 'currency' }).of(currency) ?? currency;
+  } catch {
+    return currency;
   }
 }

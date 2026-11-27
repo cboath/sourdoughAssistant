@@ -3,6 +3,18 @@
  * main table in `i18n.ts`. Plural keys come in `.one` / `.other` pairs and are read with `tp()`.
  */
 export const enRecipes = {
+  'common.notAvailable': 'not available',
+  'amount.about': 'about {amount}',
+  'money.perUnit': '{price} per {unit}',
+  'step.align.it': 'it',
+  'price.field.priceSpoken': 'Package price, in {currency}',
+  'unitShort.cup.one': 'cup',
+  'unitShort.cup.other': 'cups',
+  'speak.quarter': 'and a quarter',
+  'speak.half': 'and a half',
+  'speak.threeQuarters': 'and three quarters',
+  'unit.cup.spoken': 'cups',
+
   // Shared (screens-recipes.md section 0, 4.6)
   'common.save': 'Save',
   'common.delete': 'Delete',
@@ -89,7 +101,7 @@ export const enRecipes = {
   'pantry.detail.noHistory': 'No prices yet.',
   'pantry.detail.deleteEntry': 'Delete this price',
   'pantry.detail.entryMenu': 'More options for price on {date}',
-  'pantry.detail.cardLabel': 'Current price {package}. {perG}, {readable}. {priced}.',
+  'pantry.detail.cardLabel': 'Current price {package}',
   'pantry.detail.usedIn': 'Used in',
   'pantry.detail.levainUse': 'Levain, flour part priced here',
   'pantry.detail.notUsed': 'Not used in any recipe yet.',
@@ -129,6 +141,8 @@ export const enRecipes = {
   'val.price.whole': 'Enter a whole amount.',
   'val.price.max': 'That price looks too high. Check it and try again.',
   'val.size.positive': 'Enter a size above 0.',
+  'val.size.min': 'That package looks too small. Check the size and unit.',
+  'val.size.decimals': 'Use up to 3 decimal places.',
   'val.size.max': 'That package looks too big. Check the size and unit.',
   'val.density.required': 'Enter grams per cup so this price can be used in grams.',
   'val.density.range': 'Enter between 1 and 1,000 g.',
@@ -180,6 +194,7 @@ export const enRecipes = {
   'recipes.filter.group': 'Filters',
   'recipes.row.summary': '{hydration} hydration · {loaves} · {cost} per loaf',
   'recipes.row.summaryNoCost': '{hydration} hydration · {loaves}',
+  'recipes.row.hydration': '{pct} hydration',
   'recipes.row.costIncomplete': 'Cost incomplete',
   'recipes.row.noFlour': 'No flour yet',
   'recipes.row.noSteps': 'No steps yet',
@@ -210,6 +225,7 @@ export const enRecipes = {
   'recipes.seeded': 'Starter recipes added.',
 
   // Recipe editor
+  'edit.backTitle': 'Recipe',
   'edit.titleNew': 'New recipe',
   'edit.titleEdit': 'Edit recipe',
   'edit.copyName': '{name} (copy)',
@@ -291,6 +307,10 @@ export const enRecipes = {
   'pick.empty.body': 'Add an item to use it in this recipe.',
 
   // Ingredient editor
+  'ingr.gone': "This ingredient isn't in the recipe anymore.",
+  'ingr.backToRecipe': 'Back to recipe',
+  'ingr.levainName': 'Levain',
+  'step.gone': "This step isn't in the recipe anymore.",
   'ingr.titleNew': 'Add ingredient',
   'ingr.titleEdit': 'Edit ingredient',
   'ingr.item': 'Pantry item',

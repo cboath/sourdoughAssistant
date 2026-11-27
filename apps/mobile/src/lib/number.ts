@@ -19,11 +19,18 @@ export function parseNumberInput(text: string, locale: string): NumberParse {
   const trimmed = text.trim().replace(/\s+/g, '');
   if (trimmed === '') return { ok: false, reason: 'empty' };
   const sep = decimalSeparator(locale);
-  const normalized = sep === ',' ? trimmed.replace(',', '.') : trimmed;
-  if (!/^\d*\.?\d*$/.test(normalized) || normalized === '.') return { ok: false, reason: 'nan' };
+  const group = sep === ',' ? '.' : ',';
+  // Pasted "1,000" or "1.000,5": drop the group separator only when it forms valid thousands groups.
+  const groupedPattern = new RegExp(`^-?\\d{1,3}(\\${group}\\d{3})+(\\${sep}\\d*)?$`);
+  const ungrouped = groupedPattern.test(trimmed) ? trimmed.split(group).join('') : trimmed;
+  const normalized = sep === ',' ? ungrouped.replace(',', '.') : ungrouped;
+  // A sign is parsed (not rejected) so the caller can say "above 0" instead of "not a number".
+  if (!/^-?\d*\.?\d*$/.test(normalized) || /^-?\.?$/.test(normalized)) {
+    return { ok: false, reason: 'nan' };
+  }
   const value = Number(normalized);
   if (!Number.isFinite(value)) return { ok: false, reason: 'nan' };
-  const decimals = normalized.includes('.') ? normalized.split('.')[1].length : 0;
+  const decimals = (normalized.split('.')[1] ?? '').length;
   return { ok: true, value, decimals };
 }
 

@@ -7,18 +7,28 @@ import { t } from '../../lib/i18n';
 export interface SkeletonProps {
   /** Number of placeholder rows. */
   rows?: number;
+  /** `detail`: a heading bar and a card-shaped block above the rows (detail screens). */
+  variant?: 'list' | 'detail';
   testID?: string;
 }
 
-function Bar({ width, opacity }: { width: DimensionValue; opacity: Animated.Value }) {
-  const { color, radius } = useTheme();
+function Bar({
+  width,
+  opacity,
+  height,
+}: {
+  width: DimensionValue;
+  opacity: Animated.Value;
+  height?: number;
+}) {
+  const { color, radius, space } = useTheme();
   return (
     <Animated.View
       accessible={false}
       importantForAccessibility="no"
       style={{
         width,
-        height: 14,
+        height: height ?? space.md,
         borderRadius: radius.xs,
         backgroundColor: color.skeleton,
         opacity,
@@ -28,7 +38,7 @@ function Bar({ width, opacity }: { width: DimensionValue; opacity: Animated.Valu
 }
 
 /** Cold-start placeholder shaped like ListRows. The pulse runs on the native driver; static with reduce motion. */
-export function Skeleton({ rows = 6, testID }: SkeletonProps) {
+export function Skeleton({ rows = 6, variant = 'list', testID }: SkeletonProps) {
   const { space, layout, motion } = useTheme();
   const reduced = useReducedMotion();
   const pulse = useRef(new Animated.Value(1)).current;
@@ -57,6 +67,12 @@ export function Skeleton({ rows = 6, testID }: SkeletonProps) {
       accessibilityState={{ busy: true }}
       style={{ paddingHorizontal: layout.screenMargin }}
     >
+      {variant === 'detail' ? (
+        <View style={{ paddingVertical: space.md, gap: space.lg }}>
+          <Bar width="50%" opacity={pulse} height={space.xl} />
+          <Bar width="100%" opacity={pulse} height={space.huge * 2} />
+        </View>
+      ) : null}
       {Array.from({ length: rows }, (_, i) => (
         <View key={i} style={{ paddingVertical: space.md, gap: space.sm }}>
           <Bar width="60%" opacity={pulse} />

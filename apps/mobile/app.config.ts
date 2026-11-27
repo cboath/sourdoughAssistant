@@ -1,33 +1,45 @@
 import type { ExpoConfig } from 'expo/config';
 
-// PLACEHOLDER: the bundle ID / Android package below awaits Chris's confirmation
-// (docs/plan.md Q1/Q2). Changing it later is cheap now but painful after store setup.
+// Bundle ID and Android package are decided (docs/open-questions.md A2). They are effectively
+// permanent once the first store upload happens.
 const BUNDLE_ID = 'com.cboath.sourdoughassistant';
 
 const config: ExpoConfig = {
   name: 'Sourdough Assistant',
   slug: 'sourdough-assistant',
-  // Provisional: scheme = bundle ID to avoid collisions (SEC-01 M2). Awaiting Chris's bundle ID.
+  // Deep-link scheme = bundle ID, so no other app claims it (SEC-01 M2, open-questions A2).
   scheme: BUNDLE_ID,
   version: '0.1.0',
   orientation: 'default',
   userInterfaceStyle: 'automatic',
-  ios: { supportsTablet: false, bundleIdentifier: BUNDLE_ID },
+  ios: {
+    supportsTablet: false,
+    bundleIdentifier: BUNDLE_ID,
+    // E2: short home-screen name; the store name stays "Sourdough Assistant".
+    infoPlist: { CFBundleDisplayName: 'Sourdough' },
+  },
   android: { package: BUNDLE_ID },
   plugins: [
     'expo-router',
     'expo-sqlite',
     'expo-localization',
+    ['./plugins/withAndroidAppLabel', 'Sourdough'],
+    // Local notifications only (ADR 0011, ADR 0015): no APNs. `enableRemoteNotifications: false`
+    // keeps `aps-environment` and the remote-notification background mode out of the build, so a
+    // free personal team can still sign it. Default sound only, no custom sound files.
+    ['expo-notifications', { enableRemoteNotifications: false }],
+    // Time-sensitive entitlement, gated (on for EAS preview/production or SA_TIME_SENSITIVE=1).
+    './plugins/withTimeSensitiveNotifications',
     '@react-native-community/datetimepicker',
     // Colors match palette.flour50 / palette.night950 (tokens.ts). No image until brand assets exist (Q5).
     ['expo-splash-screen', { backgroundColor: '#FBF8F3', dark: { backgroundColor: '#14110E' } }],
-    // ADR 0001: iOS 18.0 / Android minSdk 31 (provisional until Chris's test devices are known).
+    // OS minimums are decided: iOS 18.0 / Android minSdk 31 (open-questions A7, ADR 0001).
     [
       'expo-build-properties',
       { ios: { deploymentTarget: '18.0' }, android: { minSdkVersion: 31 } },
     ],
-    // expo-updates config intentionally NOT added: whether OTA ships in v1 is pending
-    // Chris's decision (SEC-01 M1, ADR 0015).
+    // OTA is not part of v1 (open-questions A6, ADR 0015 section 5): do NOT add expo-updates,
+    // `updates` or `runtimeVersion` config. Revisit in v1.1 with sync.
   ],
   experiments: { typedRoutes: true },
 };

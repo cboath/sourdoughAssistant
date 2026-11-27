@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- table-driven tests pass loosely typed fixtures */
-/** QA-02: kitchen temperature (ADR 0008). PROVISIONAL: the table awaits Chris (Q7). Values change by data only. */
+/** QA-02: kitchen temperature (ADR 0008). Table decided by Chris (open-questions B2, ADR 0008 Accepted); a later retune is a data change only. */
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_TEMP_TABLE,
@@ -19,7 +19,7 @@ const choose = (opts: any, st: any[] = steps()) => {
   return r.value as Record<string, any>;
 };
 
-describe('table and multiplier (PROVISIONAL)', () => {
+describe('table and multiplier (ADR 0008)', () => {
   it('TMP-T1 reference temperature and table rows from ADR 0008', () => {
     expect(REFERENCE_TEMP_C).toBe(24);
     const expected: [number, number][] = [

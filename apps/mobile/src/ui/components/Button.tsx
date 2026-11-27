@@ -1,3 +1,4 @@
+import type { ComponentRef, Ref } from 'react';
 import { ActivityIndicator, Platform, Pressable, View } from 'react-native';
 import { useDelayedFlag } from '../hooks/useDelayedFlag';
 import { useFocusRing } from '../hooks/useFocusRing';
@@ -11,6 +12,10 @@ export type ButtonVariant = 'primary' | 'tonal' | 'outline' | 'text' | 'destruct
 export type ButtonSize = 'md' | 'lg' | 'hero';
 
 export interface ButtonProps {
+  /** React 19: `ref` is a regular prop (screen-reader focus returns here after a sheet). */
+  ref?: Ref<ComponentRef<typeof View>>;
+  /** For a button that expands something ("Show all"). */
+  expanded?: boolean;
   /** Visible label (sentence case). It is also the accessibility label unless overridden. */
   label: string;
   onPress: () => void;
@@ -31,6 +36,8 @@ export interface ButtonProps {
 const SPINNER_DELAY_MS = 300;
 
 export function Button({
+  ref,
+  expanded,
   label,
   onPress,
   variant = 'primary',
@@ -97,11 +104,12 @@ export function Button({
 
   return (
     <Pressable
+      ref={ref}
       testID={testID}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityHint={accessibilityHint}
-      accessibilityState={{ disabled: inactive, busy: loading }}
+      accessibilityState={{ disabled: inactive, busy: loading, expanded }}
       disabled={inactive}
       onPress={onPress}
       android_ripple={

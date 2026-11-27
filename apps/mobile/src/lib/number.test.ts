@@ -16,8 +16,20 @@ describe('parseNumberInput', () => {
     expect(parseNumberInput('  ', 'en-US')).toEqual({ ok: false, reason: 'empty' });
     expect(parseNumberInput('abc', 'en-US')).toEqual({ ok: false, reason: 'nan' });
     expect(parseNumberInput('1.2.3', 'en-US')).toEqual({ ok: false, reason: 'nan' });
-    expect(parseNumberInput('-5', 'en-US')).toEqual({ ok: false, reason: 'nan' });
+    expect(parseNumberInput('--5', 'en-US')).toEqual({ ok: false, reason: 'nan' });
+    expect(parseNumberInput('-', 'en-US')).toEqual({ ok: false, reason: 'nan' });
     expect(parseNumberInput('.', 'en-US')).toEqual({ ok: false, reason: 'nan' });
+  });
+});
+
+describe('parseNumberInput signs and grouping', () => {
+  it('parses a negative so the caller can say "above 0"', () => {
+    expect(parseNumberInput('-5', 'en-US')).toEqual({ ok: true, value: -5, decimals: 0 });
+  });
+  it('accepts pasted thousands groups, but not stray separators', () => {
+    expect(parseNumberInput('1,000', 'en-US')).toEqual({ ok: true, value: 1000, decimals: 0 });
+    expect(parseNumberInput('1.000,5', 'de-DE')).toEqual({ ok: true, value: 1000.5, decimals: 1 });
+    expect(parseNumberInput('1,00', 'en-US')).toEqual({ ok: false, reason: 'nan' });
   });
 });
 

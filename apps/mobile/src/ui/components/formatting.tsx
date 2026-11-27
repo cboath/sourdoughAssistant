@@ -1,4 +1,5 @@
 import { formatAmount, formatMoney, type UnitSystem } from '@sourdough/core';
+import { t } from '../../lib/i18n';
 import { useLocale } from '../hooks/useLocale';
 import { Text, type TextProps } from './Text';
 
@@ -28,7 +29,7 @@ export function formatPerUnitMoney(
     minimumFractionDigits: digits ?? 2,
     maximumFractionDigits: 4,
   }).format(cents / 10 ** (digits ?? 2));
-  return `${formatted} per ${perUnit}`;
+  return t('money.perUnit', { price: formatted, unit: perUnit });
 }
 
 export function MoneyText({ cents, currency, locale, perUnit, ...rest }: MoneyTextProps) {
@@ -68,7 +69,7 @@ export function QuantityText({
   const amount = formatAmount(grams, { unitSystem, locale: locale ?? device.locale, factors });
   const text =
     showSecondary && amount.secondary
-      ? `${amount.primary} · about ${amount.secondary}`
+      ? `${amount.primary} · ${t('amount.about', { amount: amount.secondary })}`
       : amount.primary;
   return (
     <Text numeric accessibilityLabel={text} {...rest}>

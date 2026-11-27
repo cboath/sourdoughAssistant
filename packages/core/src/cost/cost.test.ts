@@ -210,3 +210,40 @@ describe('sellPriceCents', () => {
     expect(() => sellPriceCents(139, 0, 0)).toThrow(CoreInvariantError);
   });
 });
+
+describe('SEC-M3-01: unusable results are invalidAmount, never Infinity or NaN', () => {
+  const pkg = (size: number, priceCents = 240): PricedPackage => ({ priceCents, size, unit: 'g' });
+
+  it('a 1e-300 package gives invalidAmount for the line, the unit cost and the breakdown', () => {
+    const tiny = pkg(1e-300);
+    const line = lineCostCents(450, tiny);
+    expect(line.ok).toBe(false);
+    if (!line.ok) expect(line.error.code).toBe('invalidAmount');
+    expect(unitCostCentsPerGram(tiny).ok).toBe(false);
+    const b = costBreakdown(
+      [{ lineId: 'a', name: 'Flour', role: 'flour', amountG: 450, pantry: tiny }],
+      1,
+    );
+    expect(b.lines[0]?.status).toBe('conversionError');
+    expect(b.lines[0]?.conversionError?.code).toBe('invalidAmount');
+    expect(b.lines[0]?.costCents).toBeNull();
+    expect(b.complete).toBe(false);
+    expect(Number.isFinite(b.batchCents)).toBe(true);
+    expect(Number.isNaN(b.perLoafCents)).toBe(false);
+  });
+
+  it('a 1e-9 package would pass 2^53 cents, so it is invalidAmount', () => {
+    const r = lineCostCents(50_000, pkg(1e-9, 100_000_000));
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error.code).toBe('invalidAmount');
+  });
+
+  it('the largest allowed values still cost normally', () => {
+    // Smallest package (0.01 g) at the highest price (1,000,000 major units) and a 50 kg line.
+    const r = lineCostCents(50_000, pkg(0.01, 100_000_000));
+    expect(r).toEqual({ ok: true, value: 500_000_000_000_000 });
+    expect(r.ok && r.value <= Number.MAX_SAFE_INTEGER).toBe(true);
+    // The largest package (1,000 kg).
+    expect(lineCostCents(450, pkg(1_000_000, 100_000_000))).toEqual({ ok: true, value: 45_000 });
+  });
+});

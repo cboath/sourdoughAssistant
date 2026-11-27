@@ -1,4 +1,5 @@
 import { View } from 'react-native';
+import { useFontScale } from '../hooks/useFontScale';
 import { useTheme } from '../theme';
 import { t } from '../../lib/i18n';
 import { DurationField } from './DurationField';
@@ -28,6 +29,7 @@ export function isRangeValid(range: DurationRange): boolean {
 
 export function RangeField({ label, range, defaultMin, onChange, testID }: RangeFieldProps) {
   const { space } = useTheme();
+  const { stacked } = useFontScale();
   const invalid = range ? !isRangeValid(range) : false;
   return (
     <View testID={testID} style={{ gap: space.md }}>
@@ -55,22 +57,32 @@ export function RangeField({ label, range, defaultMin, onChange, testID }: Range
       ) : (
         <>
           <DurationField
-            label={`${label}: ${t('range.min')}`}
-            valueMin={range.minMin}
-            onChange={(minutes) => onChange({ range: { ...range, minMin: minutes }, defaultMin })}
-          />
-          <DurationField
             label={`${label}: ${t('range.default')}`}
             valueMin={range.defaultMin}
             onChange={(minutes) =>
               onChange({ range: { ...range, defaultMin: minutes }, defaultMin: minutes })
             }
           />
-          <DurationField
-            label={`${label}: ${t('range.max')}`}
-            valueMin={range.maxMin}
-            onChange={(minutes) => onChange({ range: { ...range, maxMin: minutes }, defaultMin })}
-          />
+          <View style={{ flexDirection: stacked ? 'column' : 'row', gap: space.md }}>
+            <View style={{ flex: 1 }}>
+              <DurationField
+                label={`${label}: ${t('range.min')}`}
+                valueMin={range.minMin}
+                onChange={(minutes) =>
+                  onChange({ range: { ...range, minMin: minutes }, defaultMin })
+                }
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <DurationField
+                label={`${label}: ${t('range.max')}`}
+                valueMin={range.maxMin}
+                onChange={(minutes) =>
+                  onChange({ range: { ...range, maxMin: minutes }, defaultMin })
+                }
+              />
+            </View>
+          </View>
           {invalid ? (
             <Text variant="footnote" color="danger" accessibilityRole="alert">
               {t('range.invalid')}

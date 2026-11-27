@@ -1,7 +1,8 @@
-import { useEffect, useRef, type ComponentRef, type ReactNode } from 'react';
+import { useEffect, useRef, type ComponentRef, type ReactNode, type RefObject } from 'react';
 import {
   AccessibilityInfo,
   findNodeHandle,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -20,6 +21,11 @@ export interface SheetProps {
   title: string;
   children: ReactNode;
   testID?: string;
+  /**
+   * The control that opened the sheet. When the sheet closes, screen-reader focus returns to it
+   * (components.md 1.4.7).
+   */
+  openerRef?: RefObject<unknown>;
 }
 
 /**
@@ -27,8 +33,8 @@ export interface SheetProps {
  * sheet, not a route (architecture section 4), so it is never deep-linkable. Built on `Modal` for
  * both platforms; iOS may later move to a native formSheet without changing this API.
  */
-export function Sheet({ visible, onClose, title, children, testID }: SheetProps) {
-  const { color, space, radius, size, layout } = useTheme();
+export function Sheet({ visible, onClose, title, children, testID, openerRef }: SheetProps) {
+  const { color, space, radius, size, layout, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const titleRef = useRef<ComponentRef<typeof View>>(null);
@@ -40,8 +46,20 @@ export function Sheet({ visible, onClose, title, children, testID }: SheetProps)
       const node = titleRef.current ? findNodeHandle(titleRef.current) : null;
       if (node) AccessibilityInfo.setAccessibilityFocus(node);
     }, 100);
-    return () => clearTimeout(timer);
-  }, [visible]);
+    return () => {
+      clearTimeout(timer);
+      // Closing: put focus back on the control that opened the sheet.
+      // Read at close time on purpose: the opener is still mounted and holds the node to refocus.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      const opener = openerRef?.current;
+      const target = opener ? findNodeHandle(opener as never) : null;
+      if (target) {
+        const refocus = setTimeout(() => AccessibilityInfo.setAccessibilityFocus(target), 300);
+        // Don't keep a test process (or anything else) alive for a focus nudge.
+        (refocus as { unref?: () => void }).unref?.();
+      }
+    };
+  }, [visible, openerRef]);
 
   return (
     <Modal
@@ -51,7 +69,11 @@ export function Sheet({ visible, onClose, title, children, testID }: SheetProps)
       onRequestClose={onClose}
       statusBarTranslucent
     >
-      <View style={{ flex: 1, justifyContent: 'flex-end' }} testID={testID}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1, justifyContent: 'flex-end' }}
+        testID={testID}
+      >
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t('common.close')}
@@ -73,7 +95,7 @@ export function Sheet({ visible, onClose, title, children, testID }: SheetProps)
             width: '100%',
             maxWidth: layout.maxContentWidth,
             alignSelf: 'center',
-            backgroundColor: color.surface,
+            backgroundColor: isDark ? color.surfaceRaised : color.surface,
             borderTopLeftRadius: radius.xl,
             borderTopRightRadius: radius.xl,
             paddingBottom: insets.bottom,
@@ -83,8 +105,8 @@ export function Sheet({ visible, onClose, title, children, testID }: SheetProps)
             accessible={false}
             style={{
               alignSelf: 'center',
-              width: 32,
-              height: 4,
+              width: space.xxl,
+              height: space.xs,
               marginTop: space.sm,
               borderRadius: radius.full,
               backgroundColor: color.borderStrong,
@@ -101,11 +123,11 @@ export function Sheet({ visible, onClose, title, children, testID }: SheetProps)
               minHeight: size.touchMin,
             }}
           >
-            <Text variant="title3">{title}</Text>
+            <Text variant="title2">{title}</Text>
           </View>
           <ScrollView keyboardShouldPersistTaps="handled">{children}</ScrollView>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

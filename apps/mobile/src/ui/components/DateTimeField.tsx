@@ -89,7 +89,7 @@ export function DateTimeField({
       <Text variant="subhead">{label}</Text>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`${label}, ${shown}`}
+        accessibilityLabel={`${label}, ${shown}${error ? `, ${t('common.error', { message: error })}` : ''}`}
         accessibilityHint={t('date.opens')}
         accessibilityState={{ disabled: !!disabled }}
         disabled={disabled}
@@ -116,9 +116,12 @@ export function DateTimeField({
         <Icon name="calendar" color="textSecondary" />
       </Pressable>
       {error ? (
-        <Text variant="footnote" color="danger">
-          {error}
-        </Text>
+        <View style={{ flexDirection: 'row', gap: space.xs, alignItems: 'center' }}>
+          <Icon name="error" size={size.iconSm} color="danger" />
+          <Text variant="footnote" color="danger" style={{ flexShrink: 1 }}>
+            {error}
+          </Text>
+        </View>
       ) : null}
       {Platform.OS === 'ios' ? (
         <Sheet visible={open} onClose={() => setOpen(false)} title={label}>

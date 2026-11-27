@@ -54,6 +54,7 @@ Numbers, money and percentages always use `Text numeric` (tabular figures). Layo
 This **refines DS-01 `flows.md` §1.5**, which said Save is disabled until the form is valid. A disabled Save hides the reason from screen reader users and doesn't say what's wrong, so in DS-02:
 
 1. **Save / Done is enabled as soon as the form is dirty.** On a clean form it's disabled, with the hint "No changes to save."
+   - **Exception:** a fresh Duplicate (`recipe-editor/new?duplicateOf=`) opens with Save enabled. A copy is a new unsaved record, so saving it unchanged is valid.
 2. **Field errors appear on blur** after the user has edited that field, and **all errors appear on Save/Done**.
 3. On a failed Save/Done:
    - Every invalid field shows its error.

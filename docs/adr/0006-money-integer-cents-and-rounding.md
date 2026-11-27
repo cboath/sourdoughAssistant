@@ -1,6 +1,6 @@
 # ADR 0006: Money: integer minor units, high-precision unit cost, round once per line
 
-- Status: Accepted (A3, A5)
+- Status: Accepted (plan assumptions A3, A5; markup and rounding defaults decided in `docs/open-questions.md` C1, C2)
 - Date: 2026-11-26
 
 ## Context
@@ -18,18 +18,18 @@ BUILD_PLAN: money is integer cents in storage and math, and is formatted only at
 4. **Totals (AMB-02):**
    - `batchCents = Σ lineCents` (the sum of the rounded lines, so the breakdown visibly adds up).
    - `perLoafCents = roundHalfUp(batchCents / loaves)`. Example: 277 ¢ over 2 loaves = 138.5, displayed as 139.
-   - Round-once-per-line (A3) applies even when a batch has many sub-cent lines (CST-09). A line whose exact cost is above 0 but rounds to 0 reports `costCents: 0` with `belowOneCent: true`, and the UI shows "<1¢". The total drift is at most 0.5 ¢ per line. That's accepted, because the lines visibly add up.
+   - Round-once-per-line (plan A3) applies even when a batch has many sub-cent lines (CST-09). A line whose exact cost is above 0 but rounds to 0 reports `costCents: 0` with `belowOneCent: true`, and the UI shows "<1¢". The total drift is at most 0.5 ¢ per line. That's accepted, because the lines visibly add up.
 5. **Share % (AMB-16):** per line = `lineCents / batchCents × 100` over priced lines only. Each share is rounded independently to 1 dp, so the shares may not sum to exactly 100.0. That's accepted; there's no largest-remainder fix-up. If any line is unpriced, the breakdown is `complete: false` and names those lines. It's never blocked.
 6. **Suggested sell price (C-7, AMB-02, AMB-03):**
    - The price is a **markup on cost**, not a margin: `sell = cost × (1 + markup)`.
    - It's computed from the **unrounded** per-loaf cost, so dividing and rounding happen in one step: `sellCents = applyRounding(roundHalfUp(batchCents * (10_000 + markupBps) / (10_000 * loaves)), rounding)`.
    - Markup is stored in **basis points** (`markup_bps`, where 15000 means 150%).
    - Rounding modes: `{ mode: 'none' }` (half up to the minor unit, the default) or `{ mode: 'up', stepCents }`, which rounds **up** to the next multiple, for example 25 ¢.
-   - **Provisional default:** markup 200% (3x ingredient cost), rounding `none`. The PRD says the existing calculator's markup logic "can seed" this. If Chris shares that logic, we adopt its definition and default.
+   - **Default (decided, open-questions C1 and C2):** markup 200% on cost (price = cost × 3), rounding `none`. Both are user-editable in Settings, Cost. Chris accepted the default and didn't supply the old calculator's logic, so nothing else needs matching.
 7. **Money input (AMB-15):**
    - Minor-unit digits follow ISO 4217 through `Intl` (JPY 0, USD 2, KWD 3).
    - `parseMoneyInput(text, currency, locale)` uses the locale's decimal separator. It **rejects** input with more decimals than the currency allows (a validation error, not silent rounding), and it rejects negative values.
-8. **Currency (C-4, A5):** comes from the device locale (`expo-localization` `getLocales()[0].currencyCode`, fallback `USD`). Formatting uses `Intl.NumberFormat(locale, { style: 'currency', currency })`. Minor-unit digits come from `resolvedOptions().maximumFractionDigits`.
+8. **Currency (PRD C-4, plan A5):** comes from the device locale (`expo-localization` `getLocales()[0].currencyCode`, fallback `USD`). Formatting uses `Intl.NumberFormat(locale, { style: 'currency', currency })`. Minor-unit digits come from `resolvedOptions().maximumFractionDigits`.
    - Every bake's cost snapshot stores its `currencyCode`, so old bakes still display correctly if the locale changes.
    - A `currency_override` column exists but stays unused (and has no UI) in v1.
    - **`energyRate` is dropped** because cost covers ingredients only.

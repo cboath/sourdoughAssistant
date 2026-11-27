@@ -20,6 +20,7 @@ Decisions behind this file: ADR 0003 (SQLite, migrations), ADR 0004 (sync-ready 
 | Durations | `INTEGER` minutes, columns end in `_min` |
 | Sync fields | Every syncable table has `created_at`, `updated_at` (`TEXT NOT NULL`) and `deleted_at` (`TEXT NULL`) |
 | Deletes | Soft delete only (set `deleted_at` and `updated_at`). The one exception is a full restore (ADR 0012) |
+| Undo of a recipe delete | `recipes.restore(id)` (RN-05): in one transaction, clears `deleted_at` on the recipe and only on the `recipe_ingredient` and `step` rows whose `deleted_at` equals the recipe's (tombstoned by the same `softDelete`), and bumps `updated_at`. Returns `false` (no-op) for a live or unknown id |
 | Reads | Always `WHERE deleted_at IS NULL` unless the caller asks for tombstones |
 | JSON columns | `TEXT` with `CHECK (json_valid(col))`. Shapes are given in section 3 |
 
@@ -49,18 +50,19 @@ CREATE TABLE settings (
   quiet_start_min        INTEGER NOT NULL DEFAULT 1320     CHECK (quiet_start_min BETWEEN 0 AND 1439), -- 22:00
   quiet_end_min          INTEGER NOT NULL DEFAULT 360      CHECK (quiet_end_min   BETWEEN 0 AND 1439), -- 06:00
   oven_capacity          INTEGER NOT NULL DEFAULT 1        CHECK (oven_capacity BETWEEN 1 AND 12),
-  reheat_gap_min         INTEGER NOT NULL DEFAULT 0        CHECK (reheat_gap_min BETWEEN 0 AND 120),   -- provisional (Q8)
-  markup_bps             INTEGER NOT NULL DEFAULT 20000    CHECK (markup_bps BETWEEN 0 AND 1000000),   -- provisional 200%
-  sell_rounding_cents    INTEGER NOT NULL DEFAULT 0        CHECK (sell_rounding_cents BETWEEN 0 AND 10000), -- 0 = none, else round up to a multiple
+  reheat_gap_min         INTEGER NOT NULL DEFAULT 0        CHECK (reheat_gap_min BETWEEN 0 AND 120),   -- decided: no gap (open-questions B1)
+  markup_bps             INTEGER NOT NULL DEFAULT 20000    CHECK (markup_bps BETWEEN 0 AND 1000000),   -- decided: 200% on cost (C1)
+  sell_rounding_cents    INTEGER NOT NULL DEFAULT 0        CHECK (sell_rounding_cents BETWEEN 0 AND 10000), -- 0 = none (decided, C2), else round up to a multiple
   heads_up_min           INTEGER NOT NULL DEFAULT 10       CHECK (heads_up_min BETWEEN 0 AND 120),     -- 0 = off
   keep_awake_default     INTEGER NOT NULL DEFAULT 1        CHECK (keep_awake_default IN (0,1)),
-  currency_override      TEXT    NULL CHECK (currency_override IS NULL OR length(currency_override) = 3),  -- unused in v1 (A5)
+  currency_override      TEXT    NULL CHECK (currency_override IS NULL OR length(currency_override) = 3),  -- v1: set only by restore (ADR 0012); no picker (plan A5)
   onboarding_completed_at TEXT   NULL,
   created_at             TEXT    NOT NULL,
   updated_at             TEXT    NOT NULL,
   deleted_at             TEXT    NULL
 ) STRICT;
--- Defaults for unit_system / temperature_unit are overwritten on first launch from the locale (en-US gives 'us'/'F').
+-- Defaults for unit_system / temperature_unit are overwritten on first launch from the locale (en-US gives 'us'/'F') (decided, open-questions D2).
+-- Quiet hours on, 22:00 to 06:00 (D3). keep_awake_default on (D5).
 
 -- Pantry -------------------------------------------------------------------
 CREATE TABLE pantry_item (
@@ -297,7 +299,9 @@ Expected additive v1.1 migration (no rewrite): `ALTER TABLE <t> ADD COLUMN dirty
   - The user-initiated "Add starter recipes" copies below are user data, not seeds: they get random ids, the current time, and `seed_key = NULL`.
 - Before inserting, the seeder skips any `seed_key` that already exists **including tombstoned rows**, so a seed the user deleted is never recreated. After the run it sets `seedVersion`.
 - **User-initiated "Add starter recipes"** (empty recipe list only, DS-02 Q-A6): `seedService.addStarterRecipes()` inserts fresh **copies**, with new UUIDs and `seed_key = NULL`. Pantry items are matched by live `seed_key`, then by case-insensitive name. Missing ones are created with `seed_key = NULL`. Tombstones are never revived, and the automatic seed rule above stays unchanged.
-- **Recipes:** a basic country loaf (the PRD section 5 step template, with the R-HYD amounts 500/375/10/100 levain at 100% as placeholders until Chris supplies his recipe, Q6), whole wheat, and an inclusion loaf (cheddar and jalapeño).
+- **Recipes:** a basic country loaf (the PRD section 5 step template, with the R-HYD amounts 500/375/10/100 levain at 100%), whole wheat, and an inclusion loaf (cheddar and jalapeño).
+  - **Decided (open-questions D1):** these recipes and the starter pantry prices below **stay placeholders** (in `apps/mobile/src/db/seed/data.ts`) until Chris supplies replacements.
+  - Replacing them later is a seed-data change: bump `SEED_VERSION` and add new fixed-UUID rows. Rows already seeded keep their fixed ids (N1), and the existing tombstone rules still apply. Don't rewrite them in place.
 - **Starter pantry:** bread flour, whole wheat flour, salt, water (0 ¢), cheddar, jalapeño (`grams_per_each`), with illustrative prices (`priced_at` = seed date) and `grams_per_cup` defaults (bread flour 120, whole wheat 113, salt 292, water 236.59).
 
 **Default template steps** (all `notify = 1`):
@@ -309,7 +313,7 @@ Expected additive v1.1 migration (no rewrite): `ALTER TABLE <t> ADD COLUMN dirty
 | 2 | Stretch and folds | fold | 120 / 120 / 120 | fold_count 4, fold_interval_min 30 |
 | 3 | Bulk ferment | bulk | 360 / 300 / 480 | temp_sensitive |
 | 4 | Shape | shape | 10 / 5 / 15 | |
-| 5 | Cold ferment (fridge) | coldProof | 720 / 720 / 1440 | |
+| 5 | Cold ferment (fridge) | coldProof | 720 / 720 / 1440 | range 12 to 24 h confirmed by Chris (open-questions B5), so no template change |
 | 6 | Preheat oven and Dutch oven | preheat | 30 / 20 / 45 | alongside → step 7, `endsAtStart` |
 | 7 | Bake, covered | bake | 30 / 25 / 35 | |
 | 8 | Bake, uncovered | bake | 15 / 10 / 25 | |

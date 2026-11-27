@@ -1,8 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- table-driven tests pass loosely typed fixtures */
 /**
  * QA-02: live bake recompute (core-cases section 10, ADR 0010 section 7, AMB-11 pure shift both ways).
- * Owned by CO-03 (src/schedule/recompute.ts), not landed yet. Skipped unless RUN_CO03=1:
- *   RUN_CO03=1 npx vitest run test/acceptance/recompute
+ * Owned by CO-03 (src/schedule/recompute.ts).
  */
 import { describe, expect, it } from 'vitest';
 import { quietHoursWarnings } from '../../src/schedule/quiet';
@@ -23,7 +22,6 @@ import {
   stepOf,
 } from './support/fixtures';
 
-const RUN = true; // CO-03 landed; gate removed by orchestrator
 const FAR_PAST = ms('2025-01-01T00:00:00.000Z');
 const LATER = ['shape', 'cold', 'preheat', 'bake1', 'bake2', 'cool'];
 const EARLIER = ['feed', 'mix', 'folds'];
@@ -44,7 +42,7 @@ const starts = (plan: any, ids: string[]) =>
 const plusMin = (o: Record<string, number>, m: number) =>
   Object.fromEntries(Object.entries(o).map(([k, v]) => [k, v + m * MIN]));
 
-describe.runIf(RUN)('recomputePlan: pure shift (AMB-11)', () => {
+describe('recomputePlan: pure shift (AMB-11)', () => {
   const p0 = basePlan();
   const bulkEnd = stepOf(p0, ITEM, 'bulk').endAt;
 
@@ -193,7 +191,7 @@ describe.runIf(RUN)('recomputePlan: pure shift (AMB-11)', () => {
   });
 });
 
-describe.runIf(RUN)('recomputePlan: folds, extend, errors', () => {
+describe('recomputePlan: folds, extend, errors', () => {
   const p0 = basePlan();
   const folds = stepOf(p0, ITEM, 'folds');
 
@@ -279,7 +277,7 @@ describe.runIf(RUN)('recomputePlan: folds, extend, errors', () => {
   });
 });
 
-describe.runIf(RUN)('recomputePlan: multi-recipe (PROVISIONAL, AMB-10)', () => {
+describe('recomputePlan: multi-recipe (ADR 0009 r10, ADR 0010 s7)', () => {
   it('LIV-14 item C feeding 40 min late: only C shifts; A and B stay put', async () => {
     const mk = (id: string) => ({ itemId: id, label: id, steps: defaultTemplate(), loaves: 1 });
     const r0 = backward(

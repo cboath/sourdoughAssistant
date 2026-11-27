@@ -1,6 +1,6 @@
 /** Shared number formatting for recipe, cost and pantry screens (screens-recipes.md section 0.2). */
 import { formatAmount, percent, type ConversionFactors, type UnitSystem } from '@sourdough/core';
-import { t } from '../../lib/i18n';
+import { t, type MessageKey } from '../../lib/i18n';
 
 /** `77.3` -> "77.3%" (de-DE "77,3 %"). `dp` decimals, default 1. */
 export function formatPercent(value: number, locale: string, dp = 1): string {
@@ -34,7 +34,10 @@ export function amountDisplay(
   factors?: ConversionFactors,
 ): AmountDisplay {
   const a = formatAmount(grams, { unitSystem: ctx.unitSystem, locale: ctx.locale, factors });
-  return { primary: a.primary, secondary: a.secondary ? `about ${a.secondary}` : null };
+  return {
+    primary: a.primary,
+    secondary: a.secondary ? t('amount.about', { amount: a.secondary }) : null,
+  };
 }
 
 /** `45 min`, `6 h`, `6 h 30 min`, `1 d 4 h` */
@@ -81,3 +84,38 @@ export const loavesText = (count: number): string => {
     ? t('recipes.row.loaves.one', { count })
     : t('recipes.row.loaves.other', { count });
 };
+
+const SPOKEN_UNITS: Record<string, MessageKey> = {
+  kg: 'unit.kg',
+  g: 'unit.g',
+  oz: 'unit.oz',
+  lb: 'unit.lb',
+  ml: 'unit.ml',
+  tbsp: 'unit.tbsp',
+  tsp: 'unit.tsp',
+  cup: 'unit.cup',
+  cups: 'unit.cup',
+  '%': 'unit.percent',
+};
+const FRACTIONS: Record<string, MessageKey> = {
+  '¼': 'speak.quarter',
+  '½': 'speak.half',
+  '¾': 'speak.threeQuarters',
+};
+
+/**
+ * Turns a display string into something a screen reader says well ("450 g · about 3¾ cups" ->
+ * "450 grams, about 3 and three quarters cups", "–" -> "not available"). Display text stays as is.
+ */
+export function speakable(text: string): string {
+  if (text.trim() === '–') return t('common.notAvailable');
+  return text
+    .replace(/([¼½¾])/g, (_m, f: string) => ` ${t(FRACTIONS[f] as MessageKey)}`)
+    .replace(
+      /(\d)\s?(kg|g|oz|lb|ml|tbsp|tsp|cups?|%)(?![\p{L}])/gu,
+      (_m, n: string, unit: string) => `${n} ${t(SPOKEN_UNITS[unit] as MessageKey)}`,
+    )
+    .replace(/\s*·\s*/g, ', ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}

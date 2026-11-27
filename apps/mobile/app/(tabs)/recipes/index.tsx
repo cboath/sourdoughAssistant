@@ -1,12 +1,5 @@
-import { Stack } from 'expo-router';
-import { t } from '../../../src/lib/i18n';
-import { ScreenPlaceholder } from '../../../src/ui/components/ScreenPlaceholder';
+import { RecipeListScreen } from '../../../src/features/recipes/components/RecipeListScreen';
 
 export default function RecipesScreen() {
-  return (
-    <>
-      <Stack.Screen options={{ title: t('tabs.recipes') }} />
-      <ScreenPlaceholder title={t('tabs.recipes')} body={t('placeholder.recipes')} />
-    </>
-  );
+  return <RecipeListScreen />;
 }

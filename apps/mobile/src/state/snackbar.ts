@@ -13,6 +13,13 @@ export interface SnackbarMessage {
 
 interface SnackbarState {
   current: SnackbarMessage | null;
+  /**
+   * Space that pinned UI (tab bar, BottomActionBar, FAB) takes from the bottom edge, by owner.
+   * The snackbar sits above the sum so it never covers them.
+   */
+  clearances: Record<string, number>;
+  setClearance(owner: string, height: number): void;
+  clearClearance(owner: string): void;
   show(input: Omit<SnackbarMessage, 'id'>): void;
   dismiss(id?: number): void;
 }
@@ -21,6 +28,17 @@ let nextId = 1;
 
 export const useSnackbarStore = create<SnackbarState>()((set, get) => ({
   current: null,
+  clearances: {},
+  setClearance(owner, height) {
+    set((s) => ({ clearances: { ...s.clearances, [owner]: height } }));
+  },
+  clearClearance(owner) {
+    set((s) => {
+      const next = { ...s.clearances };
+      delete next[owner];
+      return { clearances: next };
+    });
+  },
   show(input) {
     set({ current: { ...input, id: nextId++ } });
   },

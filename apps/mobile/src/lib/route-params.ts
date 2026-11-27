@@ -37,6 +37,8 @@ const prefillParam = z.string().transform(cleanPrefill);
 export const routeParams = {
   /** `/bake/[id]` and `/bake/[id]/timeline` */
   bake: z.object({ id: uuidParam, step: uuidParam.optional() }),
+  /** `bake/schedule/plan`: prefills the draft only (screens-bake.md 0.1). Nothing is written on mount. */
+  schedulePlan: z.object({ recipeId: uuidParam.optional(), loaves: loavesParam.optional() }),
   /** `(tabs)/recipes/[id]` and `/cost` */
   recipe: z.object({ id: uuidParam, loaves: loavesParam.optional() }),
   /** `(tabs)/pantry/[id]` */
@@ -56,6 +58,8 @@ export const routeParams = {
     id: newOrUuid,
     returnTo: z.enum(['ingredient']).optional(),
     name: prefillParam.optional(),
+    /** Scroll to and focus a conversion field (from "Add grams per cup"). Focus only, never a write. */
+    focus: z.enum(['gramsPerCup', 'gramsPerEach']).optional(),
   }),
   /** `import` takes no params: the file URI only comes from the in-process picker. */
   none: z.object({}),

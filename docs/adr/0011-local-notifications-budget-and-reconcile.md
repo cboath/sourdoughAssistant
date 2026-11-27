@@ -1,6 +1,6 @@
 # ADR 0011: Local notifications: platform budget, deterministic ids, idempotent reconcile
 
-- Status: Accepted. Delivery details (marked **verify**) are confirmed by the AN-01 and IO-01 spikes.
+- Status: Accepted. Delivery details (marked **verify**) are confirmed by the AN-01 and IO-01 spikes. These are technical checks, not open decisions. The ready notification was decided as off by default (`docs/open-questions.md` B8)
 - Date: 2026-11-26
 
 ## Context
@@ -65,7 +65,10 @@
 ### 4. Content and lock screen
 
 - **Title:** the step label from the shared `stepLabel` helper (the plain core name plus slot or loaf info, ADR 0009). **Body:** as specified by DS-03: "Time to start · {recipe}", plus "Fold 2 of 4", "In 10 min: Shape", and the A–D letter or "ready {dayTime}" where DS-03 says so.
-- **Ready notification (`kind: 'ready'`), PROVISIONAL on Chris's DS-03 Q-C4:** one per bake item at its ready instant (the end of Cool), "Ready to eat · {recipe}". Identifier `sa1:<bakeId>:<itemId>:ready`, on the `bake-headsup-v1` channel with `interruptionLevel: 'active'`. **Budget tier: non-critical, same as heads-ups**, so it never displaces a step or fold reminder. Behind `flags.readyNotification` (default `true`). If Chris says the Cool reminder is enough, flip the flag.
+- **Ready notification (`kind: 'ready'`): built, but OFF by default** (decided by Chris, `docs/open-questions.md` B8; DS-03 Q-C4).
+  - It sits behind `flags.readyNotification`, **default `false`**. While the flag is off, the planner emits **no** `ready` intents, so it adds nothing to the iOS 64 budget.
+  - When the flag is on: one per bake item at its ready instant (the end of Cool), "Ready to eat · {recipe}". Identifier `sa1:<bakeId>:<itemId>:ready`, on the `bake-headsup-v1` channel with `interruptionLevel: 'active'`. Budget tier: non-critical, same as heads-ups, so it never displaces a step or fold reminder.
+  - Turning it on is a one-line flag change plus a QA budget re-check.
 - **Android public version (DS-03 Q-A8):** expo-notifications' documented content input has no `publicVersion` field, so with PRIVATE visibility a secure lock screen shows the system's "Contents hidden" text. That's accepted, and no native work is planned. AN-01 confirms on device.
 - No personal data. SEC-01 L3 accepts recipe and step names on the lock screen.
 - **Titles and bodies are capped at 100 characters** and cleaned: control and bidi-override characters are removed (same rules as the ADR 0012 import sanitizer), because imported names reach the lock screen.
@@ -77,7 +80,7 @@
 ### 5. iOS
 
 - Ask for permission with `allowAlert`, `allowSound` and `allowBadge: false`, after an in-app primer screen (DS-01 `PERM-NOTIF`).
-- `interruptionLevel: 'timeSensitive'` for `start` and `fold`, and `'active'` for heads-ups and the sentinel. This needs the **`com.apple.developer.usernotifications.time-sensitive`** entitlement, added through `ios.entitlements` in `app.config.ts`, with no Apple approval needed. **Verify (IO-01):** whether a free personal team can sign it. If it can't, the entitlement is added only in Developer Program builds.
+- `interruptionLevel: 'timeSensitive'` for `start` and `fold`, and `'active'` for heads-ups and the sentinel. This needs the **`com.apple.developer.usernotifications.time-sensitive`** entitlement, added through `ios.entitlements` in `app.config.ts`, with no Apple approval needed. **Verify (IO-01):** whether a free personal team can sign it. This matters for all of M0 to M5, because Chris won't enroll in the Apple Developer Program until M6 (open-questions A3), so every iPhone build before then is a free 7-day Xcode install. If a personal team can't sign it, the entitlement is added only in the M6 Developer Program builds. Until then, overnight reminders use the `active` level and may be silenced by Focus, so QA-04 notes this.
 - `threadIdentifier = bakeId` groups each bake's notifications.
 - **Critical alerts are out of scope** (they need Apple approval).
 

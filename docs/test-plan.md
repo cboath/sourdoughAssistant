@@ -121,6 +121,8 @@ Rules:
 
 Pass bar: every step start, fold reminder and heads-up fires within 1 minute of its scheduled time (PRD non-functional requirement). Record scheduled time and received time for each notification in `docs/test-runs/m4.md`. Use short bakes where possible (see the compressed-time switch in section 2.1) for the permission and lifecycle cases, and one full overnight bake for the long run.
 
+**Status: all 52 T-* cases in sections 6.1 to 6.7 are BLOCKED-DEVICE.** They need a physical iPhone and Android phone (notification timing, Doze, Focus, reboot) and depend on the early native spikes IO-01 and AN-01 plus real device builds (A3/A4 enrollment is deferred to M6, so dev builds use free routes per RE-02). Nothing in this section can run in CI or on a simulator.
+
 ### 6.0 Setup, both platforms
 
 1. Install the preview or development build, fresh install, no prior data.
@@ -270,8 +272,8 @@ Full detail and the assumed value for each is the ambiguity ledger in `docs/test
 
 1. Rounding rule (AMB-01, AMB-02): half up vs half even, and how per-loaf cost and sell price are derived. The PRD example gives 139 c for one loaf, but the same recipe at 2 or 4 loaves is 138.5 c per loaf.
 2. Markup vs margin and sell price rounding (AMB-03). The "existing sourdough cost calculator" the PRD mentions is not in the repo.
-3. Kitchen-temperature table (AMB-09, plan A6, Q7). No exact temperature values can be written.
-4. Multi-recipe rules (AMB-10, plan A4, Q8): slot order, remainder placement, merged preheat, reheat gap.
+3. Kitchen-temperature table (AMB-09): RESOLVED, ADR 0008 Accepted (open-questions B2). Exact rows are in core-cases TMP-09.
+4. Multi-recipe rules (AMB-10): RESOLVED, ADR 0009 Accepted (open-questions B1 last batch and no reheat gap, B7 max 4 recipes).
 5. Live recompute policy (AMB-11): shift only, or absorb into the cold-ferment range.
 6. "Earliest possible ready time" definition (AMB-08).
 7. DST rules for a ready time in the skipped or repeated hour (AMB-04), plus Chris's agreement to the elapsed-time model (A1).

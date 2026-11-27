@@ -34,7 +34,14 @@ export function unitCostCentsPerGram(pkg: PricedPackage): Result<number, Convers
   const g = packageGrams(pkg);
   if (!g.ok) return g;
   if (!validPrice(pkg.priceCents)) return err({ code: 'invalidAmount', amount: pkg.priceCents });
-  return ok(pkg.priceCents / g.value);
+  const perGram = pkg.priceCents / g.value;
+  if (!isUsableCents(perGram)) return err({ code: 'invalidAmount', amount: perGram });
+  return ok(perGram);
+}
+
+/** A computed cost must be finite and within integer-safe range (SEC-M3-01), or it is unusable. */
+function isUsableCents(x: number): boolean {
+  return Number.isFinite(x) && x <= Number.MAX_SAFE_INTEGER;
 }
 
 function validPrice(p: number): boolean {
@@ -48,7 +55,9 @@ function exactLineCost(billedGrams: Grams, pkg: PricedPackage): Result<number, C
   if (!validPrice(pkg.priceCents)) return err({ code: 'invalidAmount', amount: pkg.priceCents });
   const g = packageGrams(pkg);
   if (!g.ok) return g;
-  return ok((pkg.priceCents * billedGrams) / g.value);
+  const exact = (pkg.priceCents * billedGrams) / g.value;
+  if (!isUsableCents(exact)) return err({ code: 'invalidAmount', amount: exact });
+  return ok(exact);
 }
 
 /** roundHalfUp(priceCents * grams / packageGrams). */
