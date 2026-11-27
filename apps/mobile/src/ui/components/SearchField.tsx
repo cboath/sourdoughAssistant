@@ -23,13 +23,13 @@ export function SearchField({
   placeholder,
   testID,
 }: SearchFieldProps) {
-  const { color, space, radius, size } = useTheme();
+  const { color, space, radius, size, typography } = useTheme();
   return (
     <View
       style={{
         flexDirection: 'row',
         alignItems: 'center',
-        minHeight: size.touchMin + 8,
+        minHeight: size.touchMin + space.sm,
         paddingLeft: space.lg,
         gap: space.sm,
         borderRadius: radius.full,
@@ -48,7 +48,12 @@ export function SearchField({
         returnKeyType="search"
         autoCorrect={false}
         allowFontScaling
-        style={{ flex: 1, minHeight: size.touchMin, color: color.textPrimary, fontSize: 16 }}
+        style={{
+          flex: 1,
+          minHeight: size.touchMin,
+          color: color.textPrimary,
+          fontSize: typography.body.fontSize,
+        }}
       />
       {value.length > 0 ? (
         <Pressable

@@ -1,4 +1,5 @@
 import { View } from 'react-native';
+import { useScreenMargin } from '../hooks/useScreenMargin';
 import { useTheme } from '../theme';
 import { Button } from './Button';
 import { Icon, type IconName } from './Icon';
@@ -31,7 +32,8 @@ export function EmptyState({
   icon,
   testID,
 }: EmptyStateProps) {
-  const { space, size, layout } = useTheme();
+  const { space, size } = useTheme();
+  const margin = useScreenMargin();
   const glyph: IconName =
     icon ?? (variant === 'search' ? 'search' : variant === 'error' ? 'error' : 'book');
   return (
@@ -40,7 +42,8 @@ export function EmptyState({
       style={{
         alignItems: 'center',
         paddingTop: space.xxxl,
-        paddingHorizontal: layout.screenMargin,
+        paddingLeft: margin.left,
+        paddingRight: margin.right,
         gap: space.md,
       }}
     >

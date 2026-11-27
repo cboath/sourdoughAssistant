@@ -179,6 +179,29 @@ export function createRecipeRepository({ q, atomic, clock, ids }: RepoContext) {
         return true;
       });
     },
+
+    /**
+     * Undo of `softDelete`. Clears `deleted_at` on the recipe and only on the ingredient and step
+     * rows tombstoned together with it (same `deleted_at`), so rows removed by an earlier edit stay
+     * deleted. Bumps `updated_at`, in one transaction. Returns false (no-op) for a live or unknown id.
+     */
+    async restore(id: string): Promise<boolean> {
+      const now = clock.nowIso();
+      return atomic(async (tx) => {
+        const row = await getRowById<RecipeRow>(tx, 'recipe', id, { includeDeleted: true });
+        if (!row || row.deleted_at === null) return false;
+        const deletedAt = row.deleted_at;
+        await updateRow(tx, 'recipe', { id }, { deleted_at: null }, now);
+        for (const table of ['recipe_ingredient', 'step']) {
+          await tx.run(
+            `UPDATE ${table} SET deleted_at = NULL, updated_at = $now
+              WHERE recipe_id = $id AND deleted_at = $deletedAt`,
+            { $now: now, $id: id, $deletedAt: deletedAt },
+          );
+        }
+        return true;
+      });
+    },
   };
 }
 export type RecipeRepository = ReturnType<typeof createRecipeRepository>;

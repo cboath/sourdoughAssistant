@@ -4,7 +4,7 @@ module.exports = {
     {
       displayName: 'app',
       preset: 'jest-expo',
-      testMatch: ['<rootDir>/src/**/__tests__/**/*.test.tsx', '<rootDir>/app/**/*.test.tsx'],
+      testMatch: ['<rootDir>/src/**/__tests__/**/*.test.tsx'],
       transformIgnorePatterns: [
         'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sourdough/.*)',
       ],
@@ -17,6 +17,7 @@ module.exports = {
         '<rootDir>/src/state/*.test.ts',
         '<rootDir>/src/lib/*.test.ts',
         '<rootDir>/src/features/notifications/*.test.ts',
+        '<rootDir>/src/features/notifications/__tests__/*.test.ts',
         '<rootDir>/src/features/backup/*.test.ts',
       ],
       transform: { '^.+\\.[jt]sx?$': ['babel-jest', { presets: ['babel-preset-expo'] }] },

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Platform, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSnackbarStore } from '../../state/snackbar';
@@ -7,6 +7,7 @@ import { Text } from './Text';
 
 export interface SnackbarProps {
   message: string;
+  spokenMessage?: string;
   actionLabel?: string;
   onAction?: () => void;
   onDismiss: () => void;
@@ -14,16 +15,20 @@ export interface SnackbarProps {
   durationMs?: number;
   /** Space reserved below it (a BottomActionBar or hero button), so it never covers them. */
   bottomOffset?: number;
+  /** Test hook: treat a screen reader as on or off without asking the OS. */
+  screenReader?: boolean;
 }
 
 /** Brief confirmation with Undo. The timer pauses while the user touches it. */
 export function Snackbar({
   message,
+  spokenMessage,
   actionLabel,
   onAction,
   onDismiss,
   durationMs,
   bottomOffset = 0,
+  screenReader,
 }: SnackbarProps) {
   const { color, space, radius, size, motion, isDark } = useTheme();
   const insets = useSafeAreaInsets();
@@ -32,9 +37,25 @@ export function Snackbar({
   const dismissRef = useRef(onDismiss);
   dismissRef.current = onDismiss;
 
+  // With a screen reader on, the message stays until the user acts: swiping to "Undo" can take
+  // longer than 8 s (components.md 1.5.2).
+  const [reader, setReader] = useState(screenReader ?? false);
+  useEffect(() => {
+    if (screenReader !== undefined) return;
+    let alive = true;
+    AccessibilityInfo.isScreenReaderEnabled()
+      .then((on) => alive && setReader(on))
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [screenReader]);
+  const readerRef = useRef(reader);
+  readerRef.current = reader;
+
   const start = () => {
     if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => dismissRef.current(), duration);
+    timer.current = readerRef.current ? null : setTimeout(() => dismissRef.current(), duration);
   };
   const pause = () => {
     if (timer.current) clearTimeout(timer.current);
@@ -42,11 +63,12 @@ export function Snackbar({
   };
 
   useEffect(() => {
-    AccessibilityInfo.announceForAccessibility(message);
+    // Android announces through the live region below; iOS has no live regions.
+    if (Platform.OS === 'ios') AccessibilityInfo.announceForAccessibility(spokenMessage ?? message);
     start();
     return pause;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- restart only for a new message
-  }, [message, duration]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- restart only for a new message or reader change
+  }, [message, duration, reader]);
 
   const background = isDark ? color.surfaceRaised : color.textPrimary;
   const textColor = isDark ? 'textPrimary' : 'background';
@@ -57,7 +79,8 @@ export function Snackbar({
         position: 'absolute',
         left: space.lg + insets.left,
         right: space.lg + insets.right,
-        bottom: insets.bottom + space.lg + bottomOffset,
+        // `bottomOffset` already includes the bottom inset when something is pinned there.
+        bottom: (bottomOffset > 0 ? bottomOffset : insets.bottom) + space.lg,
       }}
     >
       <View
@@ -109,14 +132,19 @@ export function Snackbar({
 export function SnackbarHost() {
   const current = useSnackbarStore((s) => s.current);
   const dismiss = useSnackbarStore((s) => s.dismiss);
+  const offset = useSnackbarStore((s) =>
+    Object.values(s.clearances).reduce((sum, h) => sum + h, 0),
+  );
   if (!current) return null;
   return (
     <Snackbar
       key={current.id}
       message={current.message}
+      spokenMessage={current.spokenMessage}
       actionLabel={current.actionLabel}
       onAction={current.onAction}
       onDismiss={() => dismiss(current.id)}
+      bottomOffset={offset}
     />
   );
 }

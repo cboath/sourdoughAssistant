@@ -1,3 +1,4 @@
+import type { ComponentRef, Ref } from 'react';
 import { ActivityIndicator, Platform, Pressable, View } from 'react-native';
 import { useDelayedFlag } from '../hooks/useDelayedFlag';
 import { useFocusRing } from '../hooks/useFocusRing';
@@ -11,6 +12,10 @@ export type ButtonVariant = 'primary' | 'tonal' | 'outline' | 'text' | 'destruct
 export type ButtonSize = 'md' | 'lg' | 'hero';
 
 export interface ButtonProps {
+  /** React 19: `ref` is a regular prop (screen-reader focus returns here after a sheet). */
+  ref?: Ref<ComponentRef<typeof View>>;
+  /** For a button that expands something ("Show all"). */
+  expanded?: boolean;
   /** Visible label (sentence case). It is also the accessibility label unless overridden. */
   label: string;
   onPress: () => void;
@@ -19,6 +24,8 @@ export interface ButtonProps {
   fullWidth?: boolean;
   disabled?: boolean;
   loading?: boolean;
+  /** Disabled for a moment after a tap, announced as busy, with no spinner (DR2-10). */
+  busy?: boolean;
   leadingIcon?: IconName;
   /** Explain why a button is disabled when that is not visible. */
   accessibilityHint?: string;
@@ -31,6 +38,8 @@ export interface ButtonProps {
 const SPINNER_DELAY_MS = 300;
 
 export function Button({
+  ref,
+  expanded,
   label,
   onPress,
   variant = 'primary',
@@ -38,6 +47,7 @@ export function Button({
   fullWidth = false,
   disabled = false,
   loading = false,
+  busy = false,
   leadingIcon,
   accessibilityHint,
   accessibilityLabel,
@@ -47,7 +57,7 @@ export function Button({
   const { color, size: sizes, radius, space, opacity } = useTheme();
   const focus = useFocusRing();
   const showSpinner = useDelayedFlag(loading, SPINNER_DELAY_MS);
-  const inactive = disabled || loading;
+  const inactive = disabled || loading || busy;
   const android = Platform.OS === 'android';
 
   const minHeight =
@@ -97,11 +107,12 @@ export function Button({
 
   return (
     <Pressable
+      ref={ref}
       testID={testID}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityHint={accessibilityHint}
-      accessibilityState={{ disabled: inactive, busy: loading }}
+      accessibilityState={{ disabled: inactive, busy: loading || busy, expanded }}
       disabled={inactive}
       onPress={onPress}
       android_ripple={
@@ -134,12 +145,7 @@ export function Button({
         <Icon name={leadingIcon} color={labelColor} />
       ) : null}
       <View style={{ flexShrink: 1 }}>
-        <Text
-          variant="headline"
-          color={labelColor}
-          style={{ textAlign: 'center' }}
-          numberOfLines={size === 'hero' ? 2 : undefined}
-        >
+        <Text variant="headline" color={labelColor} style={{ textAlign: 'center' }}>
           {label}
         </Text>
       </View>

@@ -1,6 +1,6 @@
 # ADR 0001: Expo SDK 58, React Native, and minimum OS targets
 
-- Status: Accepted (OS minimums are **provisional** until Chris answers plan Q10, test devices)
+- Status: Accepted. The OS minimums were decided by Chris on 2026-11-26 (`docs/open-questions.md` decision record: "Minimum OS is iOS 18 and Android 12"; A7)
 - Date: 2026-11-26
 - Deciders: mobile-solutions-architect (AR-01)
 
@@ -38,10 +38,11 @@ SDK 58 changes that affect this project:
 - **React Native + Expo SDK 58** (`expo@~58.0.0`), New Architecture (the only option since SDK 55), Hermes, TypeScript strict.
 - **Dev builds only** (`expo-dev-client`). No Expo Go. `npx expo prebuild` runs in EAS, and `ios/` and `android/` are not committed (CNG).
 - **Node 24 LTS** in CI and locally (`.nvmrc` = `24`).
-- **Minimum OS (provisional):**
+- **Minimum OS (decided, open-questions A7):**
   - **iOS 18.0** (deployment target), which is the latest (iOS 27) minus two major releases (26, 18).
   - **Android minSdk 31 (Android 12)**, targetSdk 36, compileSdk 37 (SDK 58 defaults for the last two).
-  - Written reason for Android being looser than "latest minus two" (which would be API 35): Android OS updates lag badly, Chris's Android model is unknown (Q10), and API 31 is where the exact-alarm permission model starts, so every supported device uses the same notification code path (`SCHEDULE_EXACT_ALARM`). If Chris's phone runs Android 15 or later, we can raise this to 33 without code changes.
+  - Written reason for Android being looser than "latest minus two" (which would be API 35): Android OS updates lag badly, and API 31 is where the exact-alarm permission model starts, so every supported device uses the same notification code path (`SCHEDULE_EXACT_ALARM`).
+  - The exact test-device models are still deferred by Chris (A7). They don't change these minimums. They only decide which phones QA-04 and QA-06 run on, and which OEM battery behavior we test against.
 - Set through `expo-build-properties` in `app.config.ts` (owner: RE-01, then IO-02/AN-02).
 
 ## Consequences
@@ -49,4 +50,4 @@ SDK 58 changes that affect this project:
 - RN-01 must pin `expo@~58` explicitly instead of trusting `create-expo-app`'s default, and must use Node 24.
 - RE-01: CI uses Node 24. EAS images must have Xcode 26.4 or later.
 - Native work is limited to config plugins (exact alarm, time-sensitive entitlement). There is no custom native module in v1 unless AN-01/IO-01 find that `expo-notifications` falls short.
-- If Q10 shows an older device (iOS 17 or Android 11 or lower), we lower the minimums. Expo supports down to iOS 16.4 and Android 7. Android 11 and lower would need a second code path that skips the exact-alarm permission.
+- Devices below iOS 18 or Android 12 aren't supported in v1 (A7). Lowering the minimums later is possible: Expo supports down to iOS 16.4 and Android 7. Android 11 and lower would need a second code path that skips the exact-alarm permission. That would need a new ADR.

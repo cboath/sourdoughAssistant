@@ -1,6 +1,6 @@
 # ADR 0005: Time model: elapsed durations, UTC instants, local display
 
-- Status: Accepted (A1; Chris to agree)
+- Status: Accepted. Plan A1 was agreed by Chris on 2026-11-26 (`docs/open-questions.md` B3: "real elapsed time")
 - Date: 2026-11-26
 
 ## Context
@@ -13,7 +13,7 @@ Bakes run 18 to 36 hours, and many of them cross midnight. Some will cross a DST
 2. **User input is converted to an instant once,** at the edge. The ready date and time are picked as local wall-clock time in the device's current IANA zone (`expo-localization` `getCalendars()[0].timeZone`), then converted with `localToUtc()` in core, which wraps `fromZonedTime` from date-fns-tz.
    - **Nonexistent local time** (spring-forward gap, for example 02:30 on 2026-03-08 in `America/New_York`): move forward by the gap (to 03:30 EDT) and return `adjustment: 'shiftedForward'` so the UI can say so.
    - **Ambiguous local time** (fall-back, 01:30 on 2026-11-01): pick the **earlier** instant (EDT, the first occurrence) and return `adjustment: 'ambiguousEarlier'`.
-   - **AMB-04:** a gap time is **normalized forward, never rejected**. A repeated time resolves to the **first occurrence**. The elapsed-time model itself (A1) still awaits Chris's agreement, but QA can write final values against it.
+   - **AMB-04:** a gap time is **normalized forward, never rejected**. A repeated time resolves to the **first occurrence**. The elapsed-time model itself (plan assumption A1) is agreed (open-questions B3), so QA's values are final.
 3. **Storage:** every instant is stored as an ISO UTC string. Each bake also stores the IANA `time_zone` it was scheduled in, for the record and for debugging.
 4. **Display and quiet hours use the device's current zone** at render time (`formatInTimeZone`, `isInQuietHours(at, quiet, zone)`). If the user travels, the steps stay at the same real instants and simply show new clock times. The zone is always passed into core functions as a parameter; core never reads the device zone.
 5. **Consequences of DST for the user:** a step that spans a transition shows a clock span of 11 or 13 h for a 12 h step. The timeline shows a small "clocks change tonight" note on any step that spans a transition, using `zoneTransitionsBetween()` in core.

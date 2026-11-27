@@ -71,7 +71,7 @@ export function Stepper({
   unitLabel,
   testID,
 }: StepperProps) {
-  const { space } = useTheme();
+  const { space, size } = useTheme();
   const clamp = (n: number) => Math.min(max, Math.max(min, n));
   const text = formatValue ? formatValue(value) : String(value);
   const dec = () => onChange(clamp(value - step));
@@ -97,7 +97,7 @@ export function Stepper({
       style={{ flexDirection: 'row', alignItems: 'center', gap: space.lg }}
     >
       <StepButton icon="minus" disabled={value <= min} onPress={dec} />
-      <View style={{ minWidth: 56, alignItems: 'center' }}>
+      <View style={{ minWidth: size.touchKitchen, alignItems: 'center' }}>
         <Text variant="title3" numeric>
           {formatValue ? text : String(value)}
         </Text>

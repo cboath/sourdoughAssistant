@@ -12,12 +12,35 @@ describe('DurationField', () => {
   it('splits minutes into hours and minutes and recombines on edit', async () => {
     const onChange = jest.fn();
     await renderWithTheme(<DurationField label="Duration" valueMin={390} onChange={onChange} />);
-    expect(screen.getByLabelText('Hours').props.value).toBe('6');
-    expect(screen.getByLabelText('Minutes').props.value).toBe('30');
-    await fireEvent.changeText(screen.getByLabelText('Hours'), '7');
+    expect(screen.getByLabelText('Duration, hours').props.value).toBe('6');
+    expect(screen.getByLabelText('Duration, minutes').props.value).toBe('30');
+    await fireEvent.changeText(screen.getByLabelText('Duration, hours'), '7');
     expect(onChange).toHaveBeenCalledWith(450);
-    await fireEvent.changeText(screen.getByLabelText('Minutes'), '15');
-    expect(onChange).toHaveBeenLastCalledWith(375);
+    await fireEvent.changeText(screen.getByLabelText('Duration, minutes'), '15');
+    expect(onChange).toHaveBeenLastCalledWith(435);
+  });
+});
+
+describe('DurationField normalizes on blur', () => {
+  it('lets "90" be typed in minutes, and normalizes to 1 h 30 min when the field is left', async () => {
+    const onChange = jest.fn();
+    await renderWithTheme(<DurationField label="Duration" valueMin={0} onChange={onChange} />);
+    const minutes = screen.getByLabelText('Duration, minutes');
+    await fireEvent.changeText(minutes, '90');
+    expect(onChange).toHaveBeenLastCalledWith(90);
+    expect(minutes.props.value).toBe('90');
+    await fireEvent(minutes, 'blur');
+    expect(screen.getByLabelText('Duration, hours').props.value).toBe('1');
+    expect(screen.getByLabelText('Duration, minutes').props.value).toBe('30');
+  });
+
+  it('lets a field be emptied while typing', async () => {
+    await renderWithTheme(
+      <DurationField label="Duration" valueMin={30} onChange={() => undefined} />,
+    );
+    const minutes = screen.getByLabelText('Duration, minutes');
+    await fireEvent.changeText(minutes, '');
+    expect(screen.getByLabelText('Duration, minutes').props.value).toBe('');
   });
 });
 

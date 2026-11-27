@@ -121,6 +121,8 @@ Rules:
 
 Pass bar: every step start, fold reminder and heads-up fires within 1 minute of its scheduled time (PRD non-functional requirement). Record scheduled time and received time for each notification in `docs/test-runs/m4.md`. Use short bakes where possible (see the compressed-time switch in section 2.1) for the permission and lifecycle cases, and one full overnight bake for the long run.
 
+**Status (updated 2026-11-27, QA-04): none of the 52 T-* cases has passed yet.** The JS half of 24 of them (3 AUTOMATED (mocked), 21 PARTIAL) is now covered by automated tests with a fake OS queue, and the OS half is still manual (section 6.8 has the per-case status). The other 28 stay BLOCKED (12 BLOCKED-DEVICE, 16 BLOCKED-ANDROID). Notification timing, Doze, Focus and reboot need a physical iPhone and Android phone and depend on the native spikes IO-01 and AN-01 plus real device builds (A3/A4 enrollment is deferred to M6, so dev builds use free routes per RE-02). The manual script is `docs/test-scripts/notifications.md`; results go in `docs/test-runs/m4.md`.
+
 ### 6.0 Setup, both platforms
 
 1. Install the preview or development build, fresh install, no prior data.
@@ -219,6 +221,69 @@ Plan A: request `SCHEDULE_EXACT_ALARM`, not `USE_EXACT_ALARM` (Play restricts th
 | T-FULL-2 | Same on iPhone, with a Sleep Focus active | same |
 | T-FULL-3 | Multi-recipe bake (three loaves, capacity 2) | merged timeline matches the plan; each reminder names the loaf or recipe |
 
+### 6.8 Status after QA-04 (2026-11-27)
+
+Legend. **AUTOMATED (mocked)**: the expected result is a JS-side property and a Jest test checks it against a fake OS queue (`NotifierPort`); the OS still has to confirm it once on a phone (script ID in the last column). **PARTIAL**: the JS half is automated, the OS half (delivery, display, a system dialog) is manual. **BLOCKED-DEVICE**: needs an iPhone, nothing automated can stand in. **BLOCKED-ANDROID**: needs an Android phone or emulator (on hold, plan section 9).
+
+Nothing here has run on a Simulator or phone. Script IDs refer to `docs/test-scripts/notifications.md` (letters and numbers) and to the IO-01 checklist (`IO-n`, `docs/native/ios-notifications.md` section 8).
+
+Totals: 3 AUTOMATED (mocked), 21 PARTIAL, 12 BLOCKED-DEVICE, 16 BLOCKED-ANDROID (of 52). No case is closed: a case only passes once its device half has been run.
+
+| ID | Status | Automated by (mocked) | Manual script |
+|---|---|---|---|
+| T-PERM-1 | PARTIAL | `primers.test.tsx` (primer never prompts on mount, prompts on Turn on), `scheduleScreens.test.tsx` (primer pushed after save) | S1 |
+| T-PERM-2 | PARTIAL | `scheduleToNotifications.test.tsx` (denied: saved, nothing pending), `ReminderBanners.test.tsx`, `permissions.test.tsx` | G1, G2 |
+| T-PERM-3 | PARTIAL | `lifecycle.test.tsx` (rebuild after a grant in Settings), `bakeNotificationFlow.test.tsx` (denied then granted) | G3 |
+| T-PERM-4 | PARTIAL | `bakeNotificationFlow.test.tsx` (revoked mid-bake then re-granted), `ReminderBanners.test.tsx` | G4 |
+| T-PERM-5 | BLOCKED-ANDROID | `permissions.test.tsx` covers the JS (denied goes to Settings, never re-prompts) | AN13 |
+| T-PERM-6 | BLOCKED-DEVICE | none | F6 |
+| T-PERM-7 | BLOCKED-ANDROID | none (app does not detect a blocked channel today: gap) | AN13 |
+| T-IOS-CAP-1 | PARTIAL | `bakeNotificationFlow.test.tsx` (23 for the default bake), `scheduleToNotifications.test.tsx` | H1 |
+| T-IOS-CAP-2 | PARTIAL | `budgetAndDst.test.tsx` (two bakes: 46; two 4-recipe bakes: 60) | H2 |
+| T-IOS-CAP-3 | PARTIAL | `budgetAndDst.test.tsx` (soonest kept, sentinel, hint). **Bug QA04-B1: 61 planned, budget is 60.** Which 64 iOS keeps is device-only | H3, H4, IO-8 |
+| T-IOS-CAP-4 | PARTIAL | `budgetAndDst.test.tsx` (foreground top-up, no duplicates) | H5, IO-9 |
+| T-IOS-CAP-5 | BLOCKED-DEVICE | UI hint when trimmed is covered (`ReminderBanners.test.tsx`); the maximum safe gap between opens needs a device | H6 |
+| T-IOS-CAP-6 | PARTIAL | `budgetAndDst.test.tsx` (cancel frees slots), `liveNotifications.test.tsx` | H7 |
+| T-IOS-CAP-7 | PARTIAL | `bakeNotificationFlow.test.tsx`, `liveNotifications.test.tsx` (cancel and finish remove that bake only, `satest:` untouched). Bake delete has no UI | H8 |
+| T-AND-EXACT-1 | BLOCKED-ANDROID | `primers.test.tsx` (alarm primer flow, JS only) | AN1 |
+| T-AND-EXACT-2 | BLOCKED-ANDROID | none | AN2 |
+| T-AND-EXACT-3 | BLOCKED-ANDROID | `service.test.ts` (bestEffort fallback and hash change) | AN3 |
+| T-AND-EXACT-4 | BLOCKED-ANDROID | `service.test.ts` (exact-alarm state read before every reconcile) | AN4 |
+| T-AND-EXACT-5 | BLOCKED-ANDROID | `primers.test.tsx` (rebuild after the grant) | AN5 |
+| T-AND-EXACT-6 | BLOCKED-ANDROID | none | AN6 |
+| T-AND-EXACT-7 | BLOCKED-ANDROID | none | AN6 |
+| T-AND-EXACT-8 | BLOCKED-ANDROID | none | AN7 |
+| T-AND-EXACT-9 | BLOCKED-ANDROID | none | AN8 |
+| T-AND-EXACT-10 | BLOCKED-ANDROID | none | AN9 |
+| T-DND-1 | BLOCKED-DEVICE | planner sets `timeSensitive` for start and fold (`planner.test.ts`); delivery needs the entitlement and a phone | F1, F2, IO-10 |
+| T-DND-2 | BLOCKED-DEVICE | same | F3, IO-10 |
+| T-DND-3 | BLOCKED-DEVICE | none | F4, IO-7 |
+| T-DND-4 | BLOCKED-DEVICE | none | F5 |
+| T-DND-5 | BLOCKED-ANDROID | none | F8, AN14 |
+| T-DND-6 | BLOCKED-ANDROID | none | F8, AN14 |
+| T-DND-7 | PARTIAL | `planner.test.ts`, `bakeNotificationFlow.test.tsx` (3:05 AM feeding and its heads-up are scheduled on both platforms), `scheduleToNotifications.test.tsx` (quiet-hours boundaries never change the 23) | F7 |
+| T-LIFE-1 | BLOCKED-DEVICE | none | A1, A2 |
+| T-LIFE-2 | BLOCKED-ANDROID | none | AN10 |
+| T-LIFE-3 | PARTIAL | `tapToLive.test.tsx` (payload from the real planner, tap hook, real route file, step highlighted, stale and tampered payloads). The OS delivering the response on a cold start is device-only | B1, B2, B6 |
+| T-LIFE-4 | PARTIAL | `taps.test.tsx`, `tapToLive.test.tsx` (once per tap). Duplicate stack screens cannot be checked here (risk R1) | B3, B4, B5 |
+| T-LIFE-5 | PARTIAL | `lifecycle.test.tsx` (foreground receive triggers a diff, handler installed). Banner and sound are device-only | A3 |
+| T-LIFE-6 | PARTIAL | `bakeNotificationFlow.test.tsx` (a failed write rolls back every row and schedules nothing; retry works). Real process death is device-only | none (cannot be timed by hand) |
+| T-LIFE-7 | BLOCKED-DEVICE | single-transaction writes and Undo are covered in `liveOps.test.tsx` | C4 |
+| T-LIFE-8 | AUTOMATED (mocked) | `bakeNotificationFlow.test.tsx` (distinct ids, same instant, distinct title or body, one thread per bake) | C7 |
+| T-REB-1 | BLOCKED-DEVICE | none | D1, IO-11 |
+| T-REB-2 | AUTOMATED (mocked) | `bakeNotificationFlow.test.tsx` (three launches, same ids, no duplicates, `satest:` kept), `service.test.ts` | D2 |
+| T-REB-3 | AUTOMATED (mocked) | `bakeNotificationFlow.test.tsx` (old hash replaced in place) | D3 |
+| T-REB-4 | BLOCKED-DEVICE | none | D4 |
+| T-REB-5 | PARTIAL | `bakeNotificationFlow.test.tsx` (OS queue lost, rebuild restores future steps only). Restore itself is RN-09, not built | none until RN-09 |
+| T-REB-6 | PARTIAL | `budgetAndDst.test.tsx`, `bakeNotificationFlow.test.tsx` (a zone change keeps every request, same instants). OS behavior is device-only | E1, IO-13 |
+| T-REB-7 | PARTIAL | `bakeNotificationFlow.test.tsx` (past steps are dropped, nothing re-fires), `liveScreen.test.tsx` (overtime display) | E2 |
+| T-REB-8 | PARTIAL | `budgetAndDst.test.tsx` (fall back and spring forward: reminders on planned instants, elapsed spacing, repeated 1:30 fires twice one hour apart, skipped hour). Sleeping through it is device-only | E3, E4, E5 |
+| T-REB-9 | BLOCKED-DEVICE | no network code exists (SEC review) | A2 |
+| T-REB-10 | PARTIAL | `scheduleToNotifications.test.tsx` (failed schedule is counted, shown, retried), `ReminderBanners.test.tsx`. Android limits are device-only | AN12 |
+| T-FULL-1 | BLOCKED-ANDROID | none | I3 |
+| T-FULL-2 | BLOCKED-DEVICE | none | I1 |
+| T-FULL-3 | PARTIAL | `bakeNotificationFlow.test.tsx` (3 loaves, capacity 2: loaf and slot named, preheat once, merged minute; two recipes named) | I2 |
+
 ## 7. Other manual and non-functional tests
 
 | Area | Test | Expected |
@@ -270,8 +335,8 @@ Full detail and the assumed value for each is the ambiguity ledger in `docs/test
 
 1. Rounding rule (AMB-01, AMB-02): half up vs half even, and how per-loaf cost and sell price are derived. The PRD example gives 139 c for one loaf, but the same recipe at 2 or 4 loaves is 138.5 c per loaf.
 2. Markup vs margin and sell price rounding (AMB-03). The "existing sourdough cost calculator" the PRD mentions is not in the repo.
-3. Kitchen-temperature table (AMB-09, plan A6, Q7). No exact temperature values can be written.
-4. Multi-recipe rules (AMB-10, plan A4, Q8): slot order, remainder placement, merged preheat, reheat gap.
+3. Kitchen-temperature table (AMB-09): RESOLVED, ADR 0008 Accepted (open-questions B2). Exact rows are in core-cases TMP-09.
+4. Multi-recipe rules (AMB-10): RESOLVED, ADR 0009 Accepted (open-questions B1 last batch and no reheat gap, B7 max 4 recipes).
 5. Live recompute policy (AMB-11): shift only, or absorb into the cold-ferment range.
 6. "Earliest possible ready time" definition (AMB-08).
 7. DST rules for a ready time in the skipped or repeated hour (AMB-04), plus Chris's agreement to the elapsed-time model (A1).

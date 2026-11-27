@@ -45,10 +45,24 @@ describe('logger (SEC-01 L6)', () => {
   });
 
   it('keeps a bounded ring buffer', () => {
-    for (let i = 0; i < 250; i += 1) logger.debug('tick', { i });
+    for (let i = 0; i < 600; i += 1) logger.debug('tick', { i });
     const entries = logger.entries();
-    expect(entries).toHaveLength(200);
-    expect(entries[0]?.fields).toEqual({ i: 50 });
+    expect(entries).toHaveLength(500);
+    expect(entries[0]?.fields).toEqual({ i: 100 });
+  });
+
+  it('never records money-like fields (ADR 0015: prices are not logged)', () => {
+    logger.info('cost.checked', {
+      priceCents: 240,
+      costCents: 139,
+      amount: 5,
+      markupBps: 20000,
+      sellPrice: 417,
+      money: 1,
+      cents: 2,
+      kept: 7,
+    });
+    expect(logger.entries()[0]?.fields).toEqual({ kept: 7 });
   });
 
   it('does not write to the console outside development builds', () => {

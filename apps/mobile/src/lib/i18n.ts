@@ -3,10 +3,16 @@
  * with DS-02/03/04). Add locales by adding another table and selecting it in `activeTable`.
  * `{name}` placeholders are replaced from `vars`.
  */
+import { enNotifications } from './i18n-notifications';
+import { enLive } from './i18n-live';
 import { enRecipes } from './i18n-recipes';
+import { enSchedule } from './i18n-schedule';
 
 export const en = {
   ...enRecipes,
+  ...enSchedule,
+  ...enLive,
+  ...enNotifications,
   'app.name': 'Sourdough Assistant',
   'tabs.bakes': 'Bakes',
   'tabs.recipes': 'Recipes',
@@ -20,11 +26,11 @@ export const en = {
   'placeholder.recipeEditor': 'Recipe editor',
   'placeholder.pantryEditor': 'Pantry item editor',
   'notFound.title': 'Page not found',
-  'notFound.body': 'That page does not exist or has been removed.',
+  'notFound.body': "That page isn't here anymore.",
   'notFound.action': 'Go to Bakes',
   'startup.title': 'Something went wrong starting the app',
-  'startup.body': 'Your data has not been changed. Try again.',
-  'startup.tooNewTitle': 'Please update the app',
+  'startup.body': "Your data hasn't changed. Try again.",
+  'startup.tooNewTitle': 'Update the app to keep going',
   'startup.tooNewBody': 'Your data was saved by a newer version of Sourdough Assistant.',
   'startup.retry': 'Try again',
   'common.loading': 'Loading',
@@ -44,13 +50,15 @@ export const en = {
   'duration.minutes': 'Minutes',
   'duration.hoursShort': 'h',
   'duration.minutesShort': 'min',
-  'range.min': 'Minimum',
+  'range.min': 'Shortest',
   'range.default': 'Default',
-  'range.max': 'Maximum',
+  'range.max': 'Longest',
   'range.none': 'No range',
   'range.invalid': 'Default must be between min and max.',
   'amount.unit': 'Unit, {unit}',
   'amount.pickUnit': 'Choose a unit',
+  'amount.opensUnits': 'Opens unit list',
+  'unit.percent': 'percent',
   'unit.group.weight': 'Weight',
   'unit.group.volume': 'Volume',
   'unit.group.count': 'Count',
@@ -71,14 +79,13 @@ export const en = {
   'date.month': 'Month',
   'date.day': 'Day',
   'date.opens': 'Opens date picker',
-  'date.future': 'The date cannot be in the future.',
   'status.unpriced': 'Unpriced',
   'status.done': 'Done',
   'status.quietHours': 'Quiet hours',
   'status.overtime': 'Over time',
   'status.remindersOff': 'Reminders off',
-  'empty.loadFailed': 'Could not load this',
-  'chip.remove': 'Remove {name}',
+  'empty.loadFailed': "Couldn't load this.",
+  'chip.remove': 'Remove tag {name}',
   'search.noResults': 'No results',
 } as const;
 

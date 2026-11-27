@@ -1,11 +1,17 @@
 /**
  * Deep-link allowlist (SEC-01 M2). Pure function so it is unit-tested without React.
- * Allowed: `/` and `/bake/<uuid>` with an optional single `?step=<uuid>`. Everything else,
- * including extra query keys, repeated keys, other schemes and malformed ids, maps to `/`.
+ * Allowed: `/` and `/bake/<uuid>` with an optional single `?step=<uuid>`, plus the IO-01 spike
+ * route in `__DEV__` builds only. Everything else, including extra query keys, repeated keys, other schemes and malformed ids, maps to `/`.
  */
 import { uuidParam } from './route-params';
 
 const SAFE_ROOT = '/';
+/** IO-01 spike screen. Admitted only in development builds (`__DEV__`), never in release. */
+const DEV_ROUTES: readonly string[] = ['/dev-notifications'];
+
+function isDevBuild(): boolean {
+  return typeof __DEV__ !== 'undefined' && __DEV__;
+}
 
 export function sanitizeIncomingPath(input: string): string {
   try {
@@ -22,6 +28,10 @@ export function sanitizeIncomingPath(input: string): string {
 
     const [pathPart = '', query, ...extra] = rest.split('?');
     if (extra.length > 0) return SAFE_ROOT;
+    if (isDevBuild() && query === undefined) {
+      const dev = `/${pathPart.replace(/^\/+/, '').replace(/\/$/, '')}`;
+      if (DEV_ROUTES.includes(dev)) return dev;
+    }
     const segments = pathPart.replace(/^\/+/, '').replace(/\/$/, '').split('/');
     if (segments.length !== 2 || segments[0] !== 'bake') return SAFE_ROOT;
     const id = uuidParam.safeParse(segments[1]);

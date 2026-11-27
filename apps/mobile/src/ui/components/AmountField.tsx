@@ -3,17 +3,19 @@ import { Pressable, View } from 'react-native';
 import type { Unit } from '../../db/types';
 import { t } from '../../lib/i18n';
 import { useFocusRing } from '../hooks/useFocusRing';
+import { useFontScale } from '../hooks/useFontScale';
 import { useTheme } from '../theme';
 import { Icon } from './Icon';
 import { Text } from './Text';
 import { TextField } from './TextField';
-import { UnitPicker, unitName } from './UnitPicker';
+import { UnitPicker, unitName, unitShort } from './UnitPicker';
 
 export interface AmountFieldProps {
   label: string;
   /** The typed amount as text; the screen parses it. */
   value: string;
   onChangeValue: (text: string) => void;
+  onBlur?: () => void;
   unit: Unit;
   onChangeUnit: (unit: Unit) => void;
   units?: readonly Unit[];
@@ -23,6 +25,7 @@ export interface AmountFieldProps {
   info?: string;
   error?: string;
   disabled?: boolean;
+  maxLength?: number;
   testID?: string;
 }
 
@@ -30,6 +33,7 @@ export function AmountField({
   label,
   value,
   onChangeValue,
+  onBlur,
   unit,
   onChangeUnit,
   units,
@@ -37,55 +41,64 @@ export function AmountField({
   info,
   error,
   disabled,
+  maxLength,
   testID,
 }: AmountFieldProps) {
   const { color, space, radius, size } = useTheme();
+  const { stacked } = useFontScale();
   const focus = useFocusRing();
   const [open, setOpen] = useState(false);
+
+  const unitButton = (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={t('amount.unit', { unit: unitName(unit) })}
+      accessibilityHint={t('amount.opensUnits')}
+      accessibilityState={{ disabled: !!disabled, expanded: open }}
+      disabled={disabled}
+      onPress={() => setOpen(true)}
+      {...focus.handlers}
+      style={[
+        {
+          minHeight: size.touchMin,
+          minWidth: size.touchMin,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: space.xs,
+          paddingHorizontal: space.sm,
+          borderRadius: radius.sm,
+          borderWidth: stacked ? size.borderWidth : 0,
+          borderColor: color.borderStrong,
+          alignSelf: stacked ? 'flex-start' : 'auto',
+        },
+        focus.style,
+      ]}
+    >
+      <Text variant="body" accessible={false}>
+        {unitShort(unit)}
+      </Text>
+      <Icon name="chevronDown" size={size.iconSm} color="textSecondary" />
+    </Pressable>
+  );
+
   return (
     <View testID={testID} style={{ gap: space.xs }}>
-      <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: space.sm }}>
-        <View style={{ flex: 1 }}>
-          <TextField
-            label={label}
-            variant="number"
-            value={value}
-            onChangeText={onChangeValue}
-            helper={secondary}
-            error={error}
-            disabled={disabled}
-            testID={testID ? `${testID}-input` : undefined}
-          />
-        </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t('amount.unit', { unit: unitName(unit) })}
-          accessibilityState={{ disabled: !!disabled, expanded: open }}
-          disabled={disabled}
-          onPress={() => setOpen(true)}
-          {...focus.handlers}
-          style={[
-            {
-              minHeight: size.touchMin,
-              minWidth: size.touchMin + space.xl,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: space.xs,
-              paddingHorizontal: space.md,
-              borderRadius: radius.sm,
-              borderWidth: size.borderWidth,
-              borderColor: color.borderStrong,
-              // Aligns with the input when helper text sits under the field.
-              marginBottom: secondary || error ? 22 : 0,
-            },
-            focus.style,
-          ]}
-        >
-          <Text variant="body">{unit}</Text>
-          <Icon name="chevronDown" size={size.iconSm} color="textSecondary" />
-        </Pressable>
-      </View>
+      <TextField
+        label={label}
+        variant="number"
+        value={value}
+        onChangeText={onChangeValue}
+        onBlur={onBlur}
+        helper={secondary}
+        error={error}
+        disabled={disabled}
+        maxLength={maxLength}
+        counterFrom={maxLength}
+        trailing={stacked ? undefined : unitButton}
+        testID={testID ? `${testID}-input` : undefined}
+      />
+      {stacked ? unitButton : null}
       {info ? (
         <Text variant="footnote" color="textSecondary">
           {info}

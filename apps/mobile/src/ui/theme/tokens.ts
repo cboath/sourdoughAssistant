@@ -176,6 +176,12 @@ export const layout = {
   listRowTwoLineMinHeight: ios ? 60 : 72,
   timelineTimeColumn: 88,
   timelineStackFontScale: 1.5, // stack time above step name at >= this font scale
+  tableStackFontScale: 1.15, // stack a numeric table (recipe ingredients) from this font scale
+  // Estimated height of the bottom tab bar (iOS adds the bottom inset), used to keep snackbars above it.
+  tabBarHeightIos: 49,
+  tabBarHeightAndroid: 80,
+  textFieldMinHeightAndroid: 56,
+  multilineMinHeight: 96,
 } as const;
 
 export const size = {

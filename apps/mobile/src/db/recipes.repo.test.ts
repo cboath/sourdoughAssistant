@@ -201,4 +201,37 @@ describe('recipe repository', () => {
     expect(await repos.pantry.list()).toHaveLength(1);
     expect(await repos.recipes.list()).toHaveLength(1);
   });
+
+  describe('restore', () => {
+    it('undoes softDelete, restoring children deleted with the recipe but not earlier ones', async () => {
+      const { repos, clock } = await createTestDb();
+      const created = await repos.recipes.create(recipeInput());
+      const id = created.recipe.id;
+      const [flour, water, levain] = created.ingredients;
+      // An earlier edit removes the water line.
+      clock.advance(1000);
+      await repos.recipes.update(id, {
+        ingredients: [flour!, levain!].map((i) => ({ ...i })),
+      });
+      clock.advance(1000);
+      expect(await repos.recipes.softDelete(id)).toBe(true);
+      expect(await repos.recipes.get(id)).toBeNull();
+
+      clock.advance(1000);
+      expect(await repos.recipes.restore(id)).toBe(true);
+      const back = await repos.recipes.get(id);
+      expect(back?.recipe.deletedAt).toBeNull();
+      expect(back?.recipe.updatedAt).toBe(clock.nowIso());
+      expect(back?.ingredients.map((i) => i.id)).toEqual([flour!.id, levain!.id]);
+      expect(back?.ingredients.some((i) => i.id === water!.id)).toBe(false);
+      expect(back?.steps.map((s) => s.id)).toEqual(['bake', 'preheat']);
+    });
+
+    it('is a no-op (false) for a live or unknown recipe', async () => {
+      const { repos } = await createTestDb();
+      const created = await repos.recipes.create(recipeInput());
+      expect(await repos.recipes.restore(created.recipe.id)).toBe(false);
+      expect(await repos.recipes.restore('missing')).toBe(false);
+    });
+  });
 });

@@ -98,7 +98,7 @@ describe('DbGate', () => {
         <Probe />
       </DbGate>,
     );
-    await waitFor(() => expect(screen.getByText('Please update the app')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Update the app to keep going')).toBeTruthy());
     expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
   });
 });

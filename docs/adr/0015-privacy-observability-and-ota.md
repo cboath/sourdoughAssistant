@@ -1,7 +1,7 @@
 # ADR 0015: No analytics or crash SDK, local diagnostics, compile-time flags, data at rest, OS backups, OTA
 
-- Status: Accepted, except section 5 (OTA / `expo-updates`), which is an **OPEN decision for Chris** (SEC-01 H1)
-- Date: 2026-11-26, updated after SEC-01 (`docs/security/threat-model.md`)
+- Status: **Accepted.** Section 5 was decided by Chris on 2026-11-26: option (a), no `expo-updates` in v1 (`docs/open-questions.md` A6 and the decision record). The privacy-policy hosting is decided (A8), but the contact email is still TBD at RE-03 (section 9)
+- Date: 2026-11-26, updated after SEC-01 (`docs/security/threat-model.md`) and after Chris's answers (`docs/open-questions.md`)
 
 ## Context
 
@@ -36,7 +36,7 @@ No analytics SDK and no crash-reporting SDK (no Sentry, no Firebase) in v1. Cras
 
 ### 3. Feature flags
 
-Compile-time constants in `src/lib/flags.ts` (for example `calendarExport: false`, `readyNotification: true` (provisional, ADR 0011) and `devSelfTest: __DEV__`). No remote flags.
+Compile-time constants in `src/lib/flags.ts` (for example `calendarExport: false`, `readyNotification: false` (off by default, open-questions B8, ADR 0011) and `devSelfTest: __DEV__`). No remote flags.
 
 ### 4. Data at rest (SEC-01 L1): accepted
 
@@ -46,22 +46,18 @@ Compile-time constants in `src/lib/flags.ts` (for example `calendarExport: false
 - No SQLCipher, because it would need key management and raise export-compliance questions.
 - Revisit in v1.1. Cognito tokens go in `expo-secure-store`, never in SQLite.
 
-### 5. OTA updates (`expo-updates`): **OPEN, Chris to decide** (SEC-01 H1, M1)
+### 5. OTA updates: **no `expo-updates` in v1** (decided, open-questions A6; SEC-01 H1, M1)
 
-Each update check sends Expo an EAS client ID (a random install identifier) and keeps update error data. With it, the store answers "Data Not Collected" (App Store) and "No data collected" (Play) are **inaccurate**. Integrity also relies on the Expo account and token, because update code signing needs a paid plan (M1).
+**Why it was a question:** each update check sends Expo an EAS client ID (a random install identifier) and keeps update error data. With it, the store answers "Data Not Collected" (App Store) and "No data collected" (Play) would be inaccurate. Integrity would also rely on the Expo account and token, because update code signing needs a paid plan (M1).
 
-| Option | What it means |
-|---|---|
-| **(a) Drop `expo-updates` from v1 builds** (SEC-01 recommendation, and the architect agrees) | The app makes **zero** network calls. New code reaches testers through TestFlight and Play internal testing builds, which v1 uses anyway. Add `android.permission.INTERNET` to `blockedPermissions` for the `preview` and `production` profiles so the claim can be checked (keep it for `development`, which Metro needs). Privacy answers stay "Data Not Collected". `expo-updates` can be added back in v1.1, when sync brings network use and store declarations anyway. |
-| **(b) Keep `expo-updates`** | Declare *Identifiers > Device ID* (App Store, app functionality, not linked, not tracking) and *Device or other IDs* (Play, required). Add matching `PrivacyInfo.xcprivacy` entries and a privacy-policy sentence. Apply the M1 mitigations: 2FA on the Expo account, no publish-capable `EXPO_TOKEN` in CI, `production` channel unused. |
+**Decision:** option (a), recommended by SEC-01 and the architect and accepted by Chris.
+- `expo-updates` is **not** a dependency. The app makes **zero** network calls in release builds.
+- New code reaches testers only as new builds: free local or dev installs until M6, then TestFlight and Play internal testing (see section 9).
+- `android.permission.INTERNET` goes in `blockedPermissions` for the `preview` and `production` profiles so the claim can be checked. `development` keeps it, because Metro needs it.
+- Privacy answers are "Data Not Collected" (App Store) and "No data collected" (Play).
+- There's no `runtimeVersion`, `updates` block or EAS Update channel in `app.config.ts`/`eas.json`. The ADR 0003 "no rollback across migrations" rule stays on file for whenever OTA is added.
 
-**Until Chris decides, builds proceed as (a):** `expo-updates` isn't added, so no runtime-version or channel config is needed. Adding it later is cheap, but taking back an inaccurate privacy claim isn't.
-
-If (b) is chosen, the configuration is:
-- `runtimeVersion: { policy: 'fingerprint' }`
-- the `preview` channel
-- `checkAutomatically: 'ON_LOAD'` and `fallbackToCacheTimeout: 0`
-- the migration rule from ADR 0003: never roll back an update that contains a migration
+**Rejected:** option (b), keep `expo-updates` and declare *Device ID* / *Device or other IDs*. Revisit in v1.1, when sync brings network use and store declarations anyway. If it's adopted then, use a fingerprint `runtimeVersion`, the `ON_LOAD` check with `fallbackToCacheTimeout: 0`, matching privacy entries, and the M1 mitigations.
 
 ### 6. OS device backups (SEC-01 L2): kept on (this closes the earlier provisional item)
 
@@ -91,7 +87,15 @@ If (b) is chosen, the configuration is:
 
 No secrets are stored, so `expo-secure-store` isn't used in v1. There's no MMKV either: small device keys live in the SQLite `app_meta` table.
 
+### 9. Privacy policy and store accounts (decided, open-questions A3, A4, A8)
+
+- **Hosting (A8):** the local-only privacy policy is published on **GitHub Pages**. It states that the app collects no data, makes no network connections and has no analytics, and it discloses the user-controlled OS backups (section 6).
+- **Contact email: still TBD.** Chris will be asked at RE-03 (M6). **No agent fills one in.** The policy and the About screen use a clearly marked placeholder until Chris supplies it.
+- **Store accounts (A3, A4):** no Apple Developer Program or Play Console enrollment until M6. Until then, builds go onto phones only by free routes: free-team Xcode installs (7-day expiry) and sideloaded Android APKs or `eas build --local`. The App Privacy and Data safety forms are filled in at M6.
+
 ## Consequences
 
-- IO-02, AN-02 and RE-03 wait for the H1 decision before filling in the privacy answers. With (a), they answer "Data Not Collected" and the privacy policy says "no network connections".
-- RE-01: with (a), `app.config.ts` has no `updates` or `runtimeVersion` config, and `eas.json` has no channels. Remove them if they're already added. The bundle-size CI step doesn't depend on this.
+- IO-02, AN-02 and RE-03 answer "Data Not Collected" / "No data collected", and the privacy policy says "no network connections".
+- RE-01: `app.config.ts` has no `updates` or `runtimeVersion` config, and `eas.json` has no channels. Remove them if they're already added. Add `INTERNET` to `blockedPermissions` for `preview`/`production`. The bundle-size CI step doesn't depend on this.
+- RE-02: dev builds use only the free routes in section 9.
+- RE-03: needs Chris's contact email before publishing the policy (the one open item from A8).

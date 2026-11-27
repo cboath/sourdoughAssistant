@@ -332,7 +332,7 @@ export interface PlanItemInput {
 export interface PlanInput {
   items: readonly PlanItemInput[];   // order = slot fill order
   ovenCapacity: number;              // loaves at once, >= 1
-  reheatGapMin?: Minutes;            // default 0 (provisional, Q8)
+  reheatGapMin?: Minutes;            // default 0 (decided, open-questions B1)
 }
 export type PlanRequest =
   | { mode: 'backward'; readyAt: EpochMs; now: EpochMs }

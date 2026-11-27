@@ -41,3 +41,22 @@ describe('sanitizeIncomingPath (SEC-01 M2)', () => {
     expect(sanitizeIncomingPath(input)).toBe('/');
   });
 });
+
+describe('sanitizeIncomingPath dev-only route (IO-01)', () => {
+  const g = globalThis as { __DEV__?: boolean };
+  const original = g.__DEV__;
+  afterEach(() => {
+    g.__DEV__ = original;
+  });
+
+  it('admits the spike route only when __DEV__ is true', () => {
+    g.__DEV__ = true;
+    expect(sanitizeIncomingPath('/dev-notifications')).toBe('/dev-notifications');
+    expect(sanitizeIncomingPath(`${SCHEME}://dev-notifications`)).toBe('/dev-notifications');
+    expect(sanitizeIncomingPath('/dev-notifications?x=1')).toBe('/');
+    expect(sanitizeIncomingPath('/dev-other')).toBe('/');
+    g.__DEV__ = false;
+    expect(sanitizeIncomingPath('/dev-notifications')).toBe('/');
+    expect(sanitizeIncomingPath(`${SCHEME}://dev-notifications`)).toBe('/');
+  });
+});

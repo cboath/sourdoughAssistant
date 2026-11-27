@@ -1,6 +1,6 @@
 # ADR 0010: Scheduler semantics: alongside steps, folds, quiet hours, earliest ready time, live recompute
 
-- Status: Accepted (resolves QA AMB-05, AMB-06, AMB-07, AMB-08, AMB-11, AMB-13, AMB-19, and DS-01 section 10, "Fold N done")
+- Status: Accepted (resolves QA AMB-05, AMB-06, AMB-07, AMB-08, AMB-11, AMB-13, AMB-19, and DS-01 section 10, "Fold N done"). The live-recompute policy and overtime handling were confirmed by Chris on 2026-11-26 (`docs/open-questions.md` B4, B9). Quiet-hours default: D3. Cold-ferment range: B5
 - Date: 2026-11-26
 
 ## Context
@@ -49,6 +49,7 @@ A step with `folds = { count, intervalMin }` has a derived duration of `count ×
 - `QuietHours = { enabled, startMin, endMin }` in minutes after local midnight.
 - The window is `[start, end)`: start inclusive, end exclusive.
 - When `start > end`, the window wraps past midnight (22:00 to 06:00).
+- **Default (decided, open-questions D3):** on, 22:00 to 06:00.
 - `start === end` means an **empty window** (no warnings). Use `enabled = false` to switch them off explicitly.
 - Warnings are checked for **step starts (including alongside steps) and fold reminders**, because both need the baker's hands. Heads-ups are not checked.
 - The check uses the **device's current zone** at evaluation time.
@@ -68,7 +69,10 @@ A step with `folds = { count, intervalMin }` has a derived duration of `count ×
 
 ### 7. Live recompute (AMB-11, DS-01 "Fold N done")
 
-**Policy: pure shift, both directions.** When a step ends earlier or later than planned, every later step of **that item** (sequential, alongside, folds, and that item's later oven slots) shifts by `delta = actualEnd − plannedEnd`. The ready time moves by the same delta.
+**Policy: pure shift, both directions** (confirmed by Chris, open-questions B4). When a step ends earlier or later than planned, every later step of **that item** (sequential, alongside, folds, and that item's later oven slots) shifts by `delta = actualEnd − plannedEnd`. The ready time moves by the same delta.
+
+- **Hold step range (B5):** the template's cold ferment stays at **12 to 24 h** (720 to 1440 min, default 720). No template change. With the default, "Hold ready time" can absorb an early finish of up to 12 h but can't absorb a late one. Bakers who want slack set a longer cold ferment on the slider.
+- **Overtime (B9):** a step that runs past its planned end without a tap shows "+N h over" and waits for Done. The live view offers "Finished earlier? Set the time" (`stepDone` with a past `at`).
 
 Rejected alternative: silently absorbing the delta into the cold-ferment range. That changes fermentation without telling the user, and the PRD says the app "never moves steps on its own" in a hidden way. The live view shows the new ready time and offers:
 - **"Hold ready time"**: lengthen the hold step (cold ferment) by `−delta` if that stays within its range. It's an explicit `extend` event on the hold step.

@@ -26,8 +26,9 @@ export interface LogEntry {
 
 const EVENT_PATTERN = /^[a-z0-9_.:-]{1,64}$/i;
 const CODE_PATTERN = /^[a-z0-9_.:-]{1,32}$/i;
-const FORBIDDEN_KEY = /name|note|uri|url|path|file|content|sql|param|title|text|query|body|email/i;
-const MAX_ENTRIES = 200;
+const FORBIDDEN_KEY =
+  /name|note|uri|url|path|file|content|sql|param|title|text|query|body|email|price|cost|cent|amount|markup|sell|money|bps/i;
+const MAX_ENTRIES = 500; // ADR 0015 section 2
 
 const buffer: LogEntry[] = [];
 

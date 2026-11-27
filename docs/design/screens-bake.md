@@ -48,9 +48,9 @@ DS-02 §0.2 still applies for weights, money and percentages. These rows add tim
 | Day header (timeline) | first row of each local calendar day | `{weekday long}, {month long} {day}` (`Intl.DateTimeFormat` `dateStyle: 'full'` without the year, or `'long'` if the year differs from now) | `Friday, November 27` | `role="header"` |
 | Duration | `Minutes` | DS-02 rule: `45 min`, `6 h`, `6 h 30 min`, `1 d 4 h` (days only from 24 h up, and then minutes are dropped) | `30 h 55 min` → `1 d 6 h` | "1 day 6 hours" |
 | Span (timeline header, too soon) | `planSpanMin` / `readyAt − startAt` | Duration rule, **but keep hours up to 48 h** (`30 h 55 min`), because bakers think of a bake in hours | `30 h 55 min` | "30 hours 55 minutes" |
-| Countdown, live hero | `plannedEnd − now` (or the next fold) | ≥ 24 h: `1 d 4 h`. 1 h to 24 h: `5 h 42 min` (updates each minute). Under 1 h: `42:10` (`MM:SS`, updates each second). Exactly 0: `0:00` for one tick, then overtime | `42:10` | "42 minutes 10 seconds left in Bulk ferment" (refreshes every minute, never announced, §8.8) |
+| Countdown, live hero | `plannedEnd − now` (or the next fold) | ≥ 24 h: `1 d 4 h`. 1 h to 24 h: `5 h 42 min` (updates each minute). Under 1 h: `42:10` (`MM:SS`, updates each second). Exactly 0: `0:00` for one tick, then overtime | `42:10` | "42 minutes left in Bulk ferment": whole minutes only, because the label refreshes every minute and is never announced (§8.11). Under 1 min: "Less than 1 minute left" |
 | Countdown, home card | same | Minutes only: `2 h 14 min left`, `42 min left`, `Less than 1 min left` | `2 h 14 min left` | same words |
-| Overtime | `now − plannedEnd` | Under 1 h: `+12:30 over`. 1 h or more: `+1 h 5 min over`. Always with the clock-alert icon and `warning` color | `+12:30 over` | "12 minutes 30 seconds over time" |
+| Overtime | `now − plannedEnd` | Under 1 h: `+12:30 over`. 1 h or more: `+1 h 5 min over`. Always with the clock-alert icon and `warning` color | `+12:30 over` | "12 minutes over time" (whole minutes, as above) |
 | Delta | `deltaMin` | Signed, with words: `40 min later`, `20 min earlier` | `+40 min` in tight spaces | "40 minutes later" |
 | Temperature | `kitchenTempC` | Settings unit: `27 °C` / `81 °F`. Whole degrees, a no-break space before the unit | `27 °C` | "27 degrees Celsius" |
 | Letter badge | item position | `A`, `B`, `C`, `D` (max 4 items per bake, §4.1) | `A` | hidden (the recipe name carries it) |
@@ -387,7 +387,7 @@ Content (a FlashList whose header holds items 1 to 6, with the timeline rows as 
 8. **`BottomActionBar`:**
    - Footnote: `plan.bar.summary` ("Starts Fri 3:05 AM · Ready Sat 10:00 AM"). In Start now mode: "Starts now · Ready Sat 4:30 PM".
    - `Button primary lg` "Schedule bake".
-   - Disabled when the result is `tooSoon` or `invalid`. The hint is `plan.cantSchedule.tooSoon` or `plan.cantSchedule.invalid`. The banner shows the reason visually.
+   - **Stays enabled** when the result is `tooSoon` or `invalid`, or the recipe is gone (DR-02: accepted RN-06 deviation, so screen-reader users can still find the button and its hint). The hint is `plan.cantSchedule.tooSoon` or `plan.cantSchedule.invalid`. Tapping it while blocked doesn't save. Instead it gives `haptic.warning`, scrolls the list to the top so the blocking banner is visible, moves accessibility focus to the banner, and announces the hint.
 
 ### 3.3 Timeline (`Timeline` + `TimelineRow`, components §3.20)
 
@@ -423,7 +423,14 @@ Rows come from `result.plan.steps` (already sorted by `startAt`, then position),
 | | 9:00 AM | Cool | 1 h · range 30 min–2 h [Change] | |
 | | 10:00 AM | **Ready to eat** | | |
 
-Header trailing: "30 h 55 min total". Summary card: "1 step needs you during quiet hours (10 PM–6 AM)." With Cold ferment set to 18 h, the feeding moves to Thu 9:05 PM and the quiet-hours line disappears.
+Header trailing: "30 h 55 min total". Summary card: "1 step needs you during quiet hours (10 PM–6 AM)." (the feeding at 3:05 AM).
+
+**With Cold ferment set to 18 h** (corrected in DR-02), every earlier step moves 6 h earlier:
+- The feeding moves to Thu 9:05 PM, which is outside quiet hours.
+- Mix and rest moves to Fri 5:05 AM, which is **inside** quiet hours.
+- The summary still reads "1 step needs you during quiet hours (10 PM–6 AM).", and the "Quiet hours" tag moves from the feeding row to the Mix and rest row. The warning doesn't disappear.
+
+Why: with the default durations, the steps from the feeding to the fridge start over a span of 17 h 10 min (3:05 AM to 8:15 PM). That's longer than the 16 h between quiet hours, so no cold-ferment length or ready time clears the warning by itself. Shorter range steps can clear it. For example, with feeding 6 h and bulk ferment 5 h, the same 10:00 AM ready time puts the feeding at 6:05 AM and the fridge at 8:15 PM, so there's no warning. QA: assert both cases (18 h cold ferment gives 1 quiet step, on Mix and rest; feeding 6 h plus bulk 5 h gives none).
 
 ### 3.4 Sheets and pickers on this screen
 
@@ -457,7 +464,7 @@ Header trailing: "30 h 55 min total". Summary card: "1 step needs you during qui
      - [`plan.tooSoon.use`] "Use {dayTime}": sets `readyLocal` to `earliestReadyAt`.
      - [`plan.tooSoon.shortest`] "Use shortest times": only shown when re-planning with every range slider at `minMin` fits the **requested** time (ADR 0010 §6). It sets those overrides and keeps the requested ready time.
    - The timeline below shows the plan at `earliestReadyAt` (core returns it), with a `footnote` above the timeline: `plan.tooSoon.preview` ("Showing times for the earliest ready time.").
-   - Schedule is disabled. Tapping it anyway gives `haptic.warning`, and focus moves to the banner.
+   - Schedule doesn't save. Tapping it gives `haptic.warning`, scrolls to the banner and moves focus to it (§3.2 item 8).
 2. **Invalid** (`status: 'invalid'`): one `Banner danger` per failing recipe: `plan.invalid` ("{recipe} can't be scheduled: {reason}"), with [Edit recipe]. Reasons come from §3.9. For `noOvenPhase` there's a second action [`plan.invalid.capacity`] "Bake all {total} together", which sets oven capacity to the total loaf count (if it's 12 or less).
 
 **B. Warnings summary card** (only when at least one non-blocking warning applies):
@@ -466,7 +473,7 @@ Header trailing: "30 h 55 min total". Summary card: "1 step needs you during qui
 
 | Type | Line |
 |---|---|
-| Quiet hours | `plan.quiet.summary` + second line `plan.quiet.hint` ("A longer cold ferment moves earlier steps earlier.") |
+| Quiet hours | `plan.quiet.summary` + second line `plan.quiet.hint` ("To move these steps, change the ready time or how long a step takes.") |
 | Simultaneous steps | `plan.overlap.summary` |
 | DST | `plan.dst.summary` |
 | Temperature clamped | `plan.tempCold.summary` or `plan.tempWarm.summary` |
@@ -578,7 +585,7 @@ The card is not dismissible. It updates live as the plan changes. When the last 
 | `plan.warn.title` | Worth a look |
 | `plan.warn.cleared` | No more warnings. |
 | `plan.quiet.summary` | {count, plural, one {# step needs you} other {# steps need you}} during quiet hours ({from}–{to}). |
-| `plan.quiet.hint` | A longer cold ferment moves earlier steps earlier. |
+| `plan.quiet.hint` | To move these steps, change the ready time or how long a step takes. |
 | `plan.overlap.summary` | {count, plural, one {# pair of steps happens} other {# pairs of steps happen}} at the same time. |
 | `plan.dst.summary` | Clocks change on {date}. The times shown already allow for it, and every step still runs its full length. |
 | `plan.tempCold.summary` | Kitchen is cold: {step} capped at {duration}. Watch the dough; it may need longer. |
@@ -836,6 +843,8 @@ Accessibility: `role="alert"` only on first appearance (components §3.23). The 
    - "Now" `caption` with an icon, and the step position `caption textSecondary`: `live.stepOf` ("Step 4 of 10").
    - Step name `title1` (wraps fully, never truncated).
    - Countdown `timerHero numeric` (§0.2). Overtime: "+12:30 over" in `warning` with the clock-alert icon, and the panel border becomes `size.focusRingWidth` `warning`.
+     - **Never wraps mid-value** (DR-02). Numerals use `timerHero`. Unit words ("h", "min", "d", "over") and the "+" sign use `title2` on the same baseline, so "5 h 42 min" and "+1 h 5 min over" stay on one line on a 375-wide phone at the 1.3 cap. If a value still doesn't fit, it breaks only between units ("5 h" / "42 min"), never inside a number.
+     - Accepted from RN-08: in overtime the whole panel uses `warningContainer` (text `textOnWarningContainer`), and in the ready state it uses `successContainer`. This keeps the 2 pt `warning` border, and it reads better across a room than the border alone.
    - `body textSecondary`: `live.until` ("until Shape · 8:05 PM").
    - Tags: temperature adjusted ("Adjusted for 27 °C"), duration out of range, quiet hours (if the *next* start is in quiet hours: "Next step during quiet hours").
    - In overtime of 15 min or more: `Button text lg` `live.finishedEarlier` ("Finished earlier? Set the time"). It opens `STEP-ACTIONS` focused on "Finished at" (§9.3).
@@ -1173,6 +1182,9 @@ Rules:
   - Android channels use **PRIVATE** visibility. When the user hides sensitive content, Android shows the app name and its own "Contents hidden" text. expo-notifications doesn't expose a custom public version, so there's no app copy for this case (§12 Q-A8).
   - iOS follows the user's Show Previews setting.
 - Interruption: `start` and `fold` time-sensitive (iOS) / `bake-steps-v1` (Android); `headsup` and `topup` active / their channels (ADR 0011).
+- **Quiet hours never silence a step** (ADR 0010 §5 / 0011 §2, accepted in DR-02). A step inside quiet hours still rings at the time-sensitive level, and the warning is shown at planning time (§3.5) and on the live panel ("Next step during quiet hours"). The plan screen must never imply that reminders go quiet.
+- **`ready` kind** (added in RN-07 behind `flags.readyNotification`, off by default until B8 is answered): title "Ready to eat", body = the `{recipe}` rule above. Active level / `bake-headsup-v1`, never time-sensitive. **Test reminder** (DS-04 SET-REMINDERS): "Test reminder" / "Your reminders are working." Both accepted in DR-02.
+- **No notes, quantities or costs** ever appear in a title or body. Only step names, recipe names, letters and times.
 
 **Android channel names and descriptions** (shown in system settings, so they're user-facing copy):
 
@@ -1197,6 +1209,10 @@ Rules:
 | `notif.recipeDisambiguated` | {recipe}, ready {dayTime} |
 | `notif.topup.title` | Keep your reminders coming |
 | `notif.topup.body` | Open Sourdough Assistant to keep your bake reminders coming. |
+| `notif.ready.title` | Ready to eat |
+| `notif.ready.body` | {recipe} |
+| `notif.test.title` | Test reminder |
+| `notif.test.body` | Your reminders are working. |
 | `channel.steps.name` | Bake steps |
 | `channel.steps.desc` | Alerts when it's time to start a step or a fold. |
 | `channel.headsup.name` | Upcoming step warnings |
@@ -1249,3 +1265,22 @@ Rules:
 - **Q-C4. "Ready to eat" reminder.** Do you want a notification when the bread has finished cooling (Q-A9), or is the Cool step's own reminder enough?
 - **Q-C5. Hold ready time.** With the default recipe, the cold ferment is already at its 12 h minimum, so a late bulk can't be absorbed and the ready time moves later. Do you usually plan with a longer cold ferment (for example 14 to 18 h) so there's slack? If so, should the default cold ferment in the template be longer than its minimum?
 - **Q-C6. Kitchen temperature.** Do you know your kitchen temperature when you schedule? If not, should the app keep last time's value automatically instead of "Not set"? (Right now it only pre-fills the picker.)
+
+---
+
+## 13. DR-02 amendments (2026-11-27)
+
+The design review of the built M4/M5 screens is `docs/design/review-m4-m5.md`. The deviations it accepts are part of this spec for v1. Until a later milestone replaces them, they override the sections above:
+- No `BAKE-TIMELINE` route. "Coming up" expands in place ("Show all steps", including done rows with their actual times and "Was {time}" lines). The overflow has no "Full timeline" item.
+- No full `STEP-ACTIONS` sheet. Only the "Finished at" part (B9) exists. There's no out-of-order "Mark done now" in v1.
+- `OTHER-BAKES-SHEET` isn't built. With 2 or more other bakes, the chip opens `BAKES-HOME`.
+- `BAKE-INGREDIENTS` has no cost section. The cost is shown in the complete state.
+- The oven-conflict banner has no action. The ready-time card carries Hold for the shifted item.
+- Ready-time card dismissals last for the app session.
+- Steps are never auto-started in the database. The UI derives the current step (§8.1 rule 2), and the sweep sets the bake to `active`.
+- A 400 ms busy window applies to every live action, not only the hero.
+- `BAKES-HOME` uses a single column at 600 wide or more (`supportsTablet` is false).
+- `SCHED-PLAN` has no budget summary line. `banner.budget` on home covers it.
+- Duration ranges render as "12–24 h" when both ends are whole hours.
+- The `DurationSlider` runs on the JS thread (PanResponder) until gesture-handler lands with DR1-29.
+- Fixed in this pass: §3.3 worked example (quiet hours with an 18 h cold ferment), `plan.quiet.hint`, §3.2 / §3.5 Schedule-button behavior, §0.2 spoken countdowns, §8.2 countdown layout, §11 new notification copy and the quiet-hours rule.

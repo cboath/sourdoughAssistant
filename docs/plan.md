@@ -194,3 +194,51 @@ Recorded by the orchestrator on 2026-11-26. The details are in `docs/architectur
   - Currency is `currency_override ?? device`, in `src/lib/locale.ts`, shown read-only in Settings.
   - Onboarding is three steps, with no notifications step.
 - **Phases:** OTA (`expo-updates`) is excluded until Chris decides A6. The open questions are consolidated in `docs/open-questions.md`.
+
+## 8. Chris's decisions (2026-11-26)
+
+`docs/open-questions.md` is the decision record, and every working default in it is now accepted. Effects on the plan:
+
+- **Docs:** the "provisional" markers for AMB-09, AMB-10, A1 (elapsed time), the 200% markup, quiet hours, the minimum OS and the OTA decision are now accepted. The architect updates the docs and QA updates the case statuses.
+- **RE-02 (reduced, free routes only):** Chris won't enroll in the Apple Developer Program or Play Console until M6. Dev builds have to use free routes, and those need tools that aren't installed on this Mac:
+  - **iOS:** full Xcode (free, from the Mac App Store), plus a personal team signed in with Chris's Apple ID. Installs expire after 7 days.
+  - **Android:** Android Studio (SDK plus JDK 17) for local builds. The alternative is a free EAS cloud APK build, which needs a free Expo account.
+  
+  Until Chris installs one of these, M0's done-when ("dev build on phones") is partly blocked. Development continues, verified by tests and `expo export`.
+- **IO-01 and AN-01:** the native notification spikes are blocked by RE-02, because they need a real device. They stay scheduled as early as RE-02 allows.
+- **RE-03 (M6):** still needs the store accounts and the privacy contact email. Ask Chris at that point.
+
+## 9. Follow-ups from the decision pass (2026-11-26)
+
+- **RE-01:** add `INTERNET` to `android.blockedPermissions` for the preview and production profiles (ADR 0015 option a, A6).
+- **RN-07:** `flags.readyNotification` defaults to `false` (B8, ADR 0011).
+- **RE-01 / AN-01:** the Android home-screen label comes from `apps/mobile/plugins/withAndroidAppLabel.js` (E2). Check it on the first prebuild.
+- **Repo rule:** no test or non-route files under `apps/mobile/app/`. Expo Router treats them as routes, and one crashed the app at startup.
+- **RN-05:** adds `recipes.restore(id)`, which the recipe-delete Undo needs.
+- **M3 verify (2026-11-26):**
+  - QA-03 passed: 4 minor bugs, all fixed.
+  - DR-01: 46 issues fixed. Deferred: DR1-29 drag-to-dismiss, which needs react-native-gesture-handler (add with RN-06), and the DR1-32 duration-unit i18n, since v1 ships one locale.
+  - SEC-M3 says ship (`docs/security/review-m3.md`). SEC-M3-01, -02 and -07 are in the fix loop.
+- **SEC-M3-03 → RN-09, DS-04, RE-03:** "Save my data" shares a `VACUUM INTO` copy with tombstones hard-deleted, or says that deleted items are included. The privacy policy notes that deleted items stay on the device.
+- **SEC-M3-04 → CL-01 (v1.1):** use a delete-batch ID instead of exact `deleted_at` matching in `restore`.
+- **SEC-M3-05 → RE-01:** add `babel-plugin-transform-remove-console` for production, or amend ADR 0015.
+- **SEC-M3-06 → RE-01:** the 20 moderate advisories are in dev tooling. Take the fixes through normal Expo and Jest updates. Never run `npm audit fix --force`, which downgrades expo.
+- **Before the next device build:** run `expo prebuild --clean`, because the local `ios/` folder is stale.
+- **Android on hold (Chris, 2026-11-27):** there's no disk space for the emulator. AN-01, the Android column of QA-04, and Android device checks stay blocked until Chris frees space or provides an Android phone. iOS work goes ahead.
+- **RN-06 done (2026-11-27):** 519 app tests pass.
+  - Spec bug in `docs/design/screens-bake.md` §3.3: with an 18 h cold ferment, "Mix and rest" starts at 5:05 AM, which is inside quiet hours, so the warning moves to that step rather than disappearing. ux-ui-designer should fix the text during DR-02.
+  - The slider uses PanResponder, so it runs on the JS thread. Moving it to gesture-handler or Reanimated goes with DR1-29.
+- **IO-01 partial (2026-11-27):**
+  - Built: the build, config and dev harness (`/dev-notifications`, dev only) and `docs/native/ios-notifications.md`.
+  - Not run: nothing on this Mac can tap the Simulator, so permission, scheduling and the 64-cap checks still need someone to run them by hand.
+  - Open risk: we don't know whether a free personal team can sign the time-sensitive entitlement. The plugin is gated (off for local builds, on for EAS preview and production). Check this on Chris's iPhone using §8 of the doc.
+- **RN-07 done (2026-11-27):** 128 notification tests pass. The wiring for the live seam, the banners and the primer navigation went to RN-08.
+  - **Android follow-up (on hold, AN-01):** `app.config.ts` doesn't declare `SCHEDULE_EXACT_ALARM`. Until it does, exact alarms count as denied.
+  - **Quiet hours:** they are warnings only (ADR 0010 §5 / 0011 §2), so steps inside quiet hours still ring.
+- **M4/M5 verify (2026-11-27):**
+  - QA-04: 75 tests added, GO for the code. Milestone sign-off waits on manual phone runs (`docs/test-runs/m4.md`).
+  - DR-02: 28 issues (0 blocker / 9 major / 19 minor) in `docs/design/review-m4-m5.md`. Spec fixes are in screens-bake.md.
+  - The fix loop is with RN-08's agent.
+  - Open:
+    - `cancelBakeNotifications` has no caller yet (RN-09 delete/restore).
+    - `expo-keep-awake` is now declared.

@@ -1,6 +1,6 @@
 # ADR 0008: Kitchen-temperature adjustment by multiplier table
 
-- Status: **Provisional** (A6, Chris Q7; resolves QA AMB-09)
+- Status: **Accepted.** Decided by Chris on 2026-11-26 (`docs/open-questions.md` B2: this table, tuned later; D2: display unit from the locale; B6: kitchen temperature starts as "Not set"). Plan assumption A6; resolves QA AMB-09
 - Date: 2026-11-26
 
 ## Context
@@ -38,7 +38,8 @@ S-9 requires adjusting bulk and room-temperature proof durations for kitchen tem
   - In the seed template, **only bulk ferment** is `tempSensitive`. A room-temperature final proof would be too, if a recipe has one.
   - Cold ferment (fridge) is **never** adjusted.
   - The starter feeding is off by default. The user can flag it.
-- **Display unit:** comes from the locale (°F for `en-US`, °C otherwise), with a Settings override. **Provisional** until Chris answers Q7.
+- **Display unit (decided, open-questions D2):** comes from the locale (°F for `en-US`, °C otherwise), with a Settings override.
+- **No carry-over (decided, open-questions B6):** each new bake starts with the kitchen temperature "Not set". The last value only pre-fills the picker.
 - **Input range** (amended after QA-02 CG-8): the **schedule screen** accepts 10 to 40 °C (50 to 104 °F) and rejects anything else with an inline field error, and the `bake.kitchen_temp_c` CHECK enforces the same range. **Core doesn't validate the range.** `temperatureMultiplier` clamps any finite input to the table ends (18 and 30 °C), and the resulting durations are clamped to each step's range as usual.
 
 ## Options considered
@@ -48,5 +49,5 @@ S-9 requires adjusting bulk and room-temperature proof durations for kitchen tem
 
 ## Consequences
 
-- CO-02 implements `temperatureMultiplier` and `chooseDurations` per `docs/core-api.md`. QA-02 can now write exact values (TMP-09, TMP-10) from the table above. Mark them provisional until Q7 is answered.
-- Chris may retune the numbers after real bakes. That is a data change only.
+- CO-02 implements `temperatureMultiplier` and `chooseDurations` per `docs/core-api.md`. QA-02 writes exact, final values (TMP-09, TMP-10) from the table above (B2).
+- Chris may retune the numbers after real bakes (B2: "you tune it later"). That is a data change only: an edit to `DEFAULT_TEMP_TABLE` plus updated expected values, with no new ADR needed.

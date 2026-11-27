@@ -1,6 +1,6 @@
 # ADR 0007: Levain is one ingredient line with a hydration % and a flour pantry item
 
-- Status: Accepted (A2)
+- Status: Accepted (plan assumption A2). Free water and always-free levain water were confirmed by Chris on 2026-11-26 (`docs/open-questions.md` C4)
 - Date: 2026-11-26
 
 ## Context
@@ -29,7 +29,7 @@ R-3: hydration must count the flour and water inside the levain. The PRD cost ex
   - The levain line is shown as the **whole levain weight** (100/550 = 18.2%). It is not split into flour and water rows. The hydration figure is where the split shows up.
   - Percentages display to 1 dp, rounded half up from the exact ratio (ADR 0006).
 - **AMB-17 confirmed:** the PRD cost table is one loaf with 100 g of levain at 100%. Its "Water 425 g" is 375 g of added water plus 50 g of levain water, and its "Levain flour 50 g" is the levain's flour part, priced as bread flour.
-- **Cost:** a levain line is billed for its flour grams at the price of its pantry flour item. Its water part costs 0 (A2), even if the user has priced water. If the levain line has no pantry item, it's `unpriced`.
+- **Cost:** a levain line is billed for its flour grams at the price of its pantry flour item. Its water part costs 0 (plan A2; open-questions C4), even if the user has priced water. If the levain line has no pantry item, it's `unpriced`.
 - Only one levain line per recipe is expected, but more are allowed and summed.
 - Salt, inclusions and "other" lines don't count toward flour or water. Milk and other liquids are role `other` in v1 and don't count toward hydration. Revisit in v1.1 if users ask.
 

@@ -312,7 +312,7 @@ Quiet hours 22:00 to 06:00 local (crosses midnight) unless stated. Warning only:
 
 ## 8. Temperature adjustment (S-9, A6)
 
-BLOCKED (AMB-09): the lookup table is not defined (plan A6, Chris Q7). Exact durations cannot be written. Write these as property tests now and add exact rows when the table lands in the ADR.
+READY (AMB-09): the table is fixed by ADR 0008 (Accepted; open-questions B2: `1.09^(24-T)`, tuned later by Chris, which is a data change only). Exact rows are below and in `temperature.test.ts`.
 
 | ID | Property | Status |
 |---|---|---|
@@ -324,12 +324,12 @@ BLOCKED (AMB-09): the lookup table is not defined (plan A6, Chris Q7). Exact dur
 | TMP-06 | Monotonic: duration never increases as temperature rises | READY |
 | TMP-07 | C and F inputs for the same temperature (24 C and 75.2 F) give identical durations | READY |
 | TMP-08 | Total elapsed time and every start time before the adjusted step shift by exactly the sum of adjustments; steps after it are unchanged | READY |
-| TMP-09 | Exact row: bulk at 27 C, 21 C (and the cold-ferment behaviour, if any) | BLOCKED (AMB-09) |
-| TMP-10 | Chosen slider value interaction: the user's slider value is the base before adjustment, or the adjustment is skipped for slider values the user set | BLOCKED (AMB-09) |
+| TMP-09 | Exact rows, bulk default 360 (range 300-480): 18 C -> 480 (clamped from 605), 21 C -> 470, 24 C -> 360, 27 C -> 300 (clamped from 275). Cold ferment is never adjusted | READY (ADR 0008, B2) |
+| TMP-10 | A user slider value always wins (`source: 'user'`); temperature starts from the recipe default, never from a previous slider value | READY (ADR 0008 precedence, B2) |
 
 ## 9. Multi-recipe bake and oven slots (S-11, S-12, M1 criterion 7)
 
-Model under test (plan A4): the last oven slot finishes cooling at the ready time. Earlier slots finish earlier. Slots run back to back with no reheat gap. A slot's length is the bake time of its recipes (covered plus uncovered = 45 min at defaults). Cooling happens after the bake and may overlap a later slot's bake. Each recipe in an earlier slot has its whole schedule offset by minus the total length of all later slots. Loaves fill slots greedily in input order, so the remainder lands in the last slot (this matches the plan's "2 loaves share slot 1, 1 loaf gets slot 2").
+Model under test (plan A4, now ADR 0009 Accepted; open-questions B1 last batch and no reheat gap, B7 at most 4 recipes per bake, enforced by the schedule screen not by core): the last oven slot finishes cooling at the ready time. Earlier slots finish earlier. Slots run back to back with no reheat gap. A slot's length is the bake time of its recipes (covered plus uncovered = 45 min at defaults). Cooling happens after the bake and may overlap a later slot's bake. Each recipe in an earlier slot has its whole schedule offset by minus the total length of all later slots. Loaves fill slots greedily in input order, so the remainder lands in the last slot (this matches the plan's "2 loaves share slot 1, 1 loaf gets slot 2").
 
 Fixture: three recipes A, B, C, each 1 loaf, each the default template. Ready (last slot) Sat 2026-05-02 10:00 EDT. Zone `America/New_York`.
 
@@ -341,24 +341,24 @@ Fixture: three recipes A, B, C, each 1 loaf, each the default template. Ready (l
 | B | 1 | -45 min | Fri 02:20 | Fri 19:30 | Sat 07:30 | Sat 08:00 | Sat 08:15 | Sat 09:15 |
 | C | 2 | 0 | Fri 03:05 | Fri 20:15 | Sat 08:15 | Sat 08:45 | Sat 09:00 | Sat 10:00 |
 
-A and B share slot 1, C gets slot 2. Status PROPOSED (AMB-10).
+A and B share slot 1, C gets slot 2. Status READY (ADR 0009 rules 2 to 5; open-questions B1: last batch, no reheat gap).
 
 | ID | Case | Expected | Status |
 |---|---|---|---|
-| MUL-02 | Merged preheat | one preheat at Sat 07:00 (30 min before the first bake at 07:30). C's own 07:45 preheat is dropped, since the oven is already hot | PROPOSED (AMB-10) |
-| MUL-03 | Capacity 1, three loaves | slots of 1 each; A offset -90, B offset -45, C offset 0; A bake covered Sat 06:45, B 07:30, C 08:15 | PROPOSED (AMB-10) |
+| MUL-02 | Merged preheat | one preheat at Sat 07:00 (30 min before the first bake at 07:30). C's own 07:45 preheat is dropped, since the oven is already hot | READY (ADR 0009 r7) |
+| MUL-03 | Capacity 1, three loaves | slots of 1 each; A offset -90, B offset -45, C offset 0; A bake covered Sat 06:45, B 07:30, C 08:15 | READY (ADR 0009 r2, r4; B1) |
 | MUL-04 | Capacity equals loaf count (3 loaves, capacity 3) | one slot, all offsets 0, all three schedules identical to SCH-01 | READY |
 | MUL-05 | Capacity exceeds loaves | same as MUL-04 | READY |
-| MUL-06 | Capacity 2, four loaves | slot 1 = A, B at -45; slot 2 = C, D at 0 | PROPOSED (AMB-10) |
-| MUL-07 | Capacity 2, five loaves | slots of 2, 2, 1. Offsets -90, -45, 0. Slot 1 loaves ready Sat 08:30, slot 2 Sat 09:15, slot 3 Sat 10:00 | PROPOSED (AMB-10) |
-| MUL-08 | Mixed bake lengths, capacity 1 | A default (bake 30 + 15 = 45), B with covered 25 + uncovered 10 = 35, input order [A, B]: B is the last slot with offset 0 and its feeding is Fri 03:15 (10 min shorter total). A offset -35: feeding Fri 02:30, bake covered Sat 07:40 and ends 08:25 when B starts, A ready Sat 09:25 | PROPOSED (AMB-10) |
-| MUL-09 | Input order changed | [B, A] gives A as the last slot | confirms order dependence is deterministic and documented | PROPOSED (AMB-10) |
-| MUL-10 | Different recipes with different cold-ferment lengths (A 12 h, B 18 h) | each recipe's schedule is computed independently from its own bake slot. No step shared | PROPOSED |
-| MUL-11 | One recipe item at scale 2 (two loaves) with capacity 1 | does the item split across two slots? | BLOCKED (AMB-10) |
-| MUL-12 | Capacity 0, negative, or non-integer | rejected | READY |
+| MUL-06 | Capacity 2, four loaves | slot 1 = A, B at -45; slot 2 = C, D at 0 | READY (ADR 0009 r2; B1) |
+| MUL-07 | Capacity 2, five loaves | slots of 2, 2, 1. Offsets -90, -45, 0. Slot 1 loaves ready Sat 08:30, slot 2 Sat 09:15, slot 3 Sat 10:00 | READY (ADR 0009 r2, r4; B1) |
+| MUL-08 | Mixed bake lengths, capacity 1 | A default (bake 30 + 15 = 45), B with covered 25 + uncovered 10 = 35, input order [A, B]: B is the last slot with offset 0 and its feeding is Fri 03:15 (10 min shorter total). A offset -35: feeding Fri 02:30, bake covered Sat 07:40 and ends 08:25 when B starts, A ready Sat 09:25 | READY (ADR 0009 r3, r4) |
+| MUL-09 | Input order changed | [B, A] gives A as the last slot | confirms order dependence is deterministic and documented | READY (ADR 0009 r2) |
+| MUL-10 | Different recipes with different cold-ferment lengths (A 12 h, B 18 h) | each recipe's schedule is computed independently from its own bake slot. No step shared | READY (ADR 0009 r5) |
+| MUL-11 | One recipe item at scale 2 (two loaves) with capacity 1 | yes, it splits (loaf by loaf): dough steps run once, oven and tail steps are per slot (`:s1`, `:s2`), the later loaf waits in the cold ferment, `holdExceedsRange` warns if that goes over maxMin | READY (ADR 0009 r2, r6, r8) |
+| MUL-12 | Capacity 0, negative, or non-integer | rejected (throws or `invalid`) | READY (core-api) |
 | MUL-13 | Merged timeline ordering | all steps of all items sorted by start instant, ties broken deterministically (slot, then item order) | READY |
 | MUL-14 | Quiet hours on merged timeline (22:00 to 06:00) | MUL-01: A and B feeding at 02:20 warn; C at 03:05 warns; three warnings, no moves | READY given MUL-01 |
-| MUL-15 | Ready time too soon for the earliest slot | earliest-ready result, based on the slot-1 recipes (they need the longest lead time) | PROPOSED (AMB-08, AMB-10) |
+| MUL-15 | Ready time too soon for the earliest slot | earliest-ready result, based on the slot-1 recipes (they need the longest lead time) | READY (ADR 0009 r9, ADR 0010 s6) |
 | MUL-16 | Shared oven check | no two slots overlap in bake time. Slot k bake end = slot k+1 bake start | READY |
 | MUL-17 | Per-item cost snapshot | each BakeItem stores its own cost snapshot at the scale used | READY |
 
@@ -381,7 +381,7 @@ Baseline: SCH-01 plan. Rule under test (plan M1 criterion 8): every remaining pl
 | LIV-11 | Done twice | idempotent | READY |
 | LIV-12 | Recompute notification diff | LIV-01 | the set of notifications to cancel and the set to create match exactly the changed steps; unchanged steps produce no notification churn | READY |
 | LIV-13 | Last step (Cool) done early | ready time becomes the actual end | PROPOSED (AMB-11) |
-| LIV-14 | Recompute in multi-recipe bake | MUL-01, item C's feeding 40 min late | only C's remaining steps shift; A and B unchanged; merged timeline reordered; C's preheat dropped state unchanged | PROPOSED (AMB-10, AMB-11) |
+| LIV-14 | Recompute in multi-recipe bake | MUL-01, item C's feeding 40 min late | only C's remaining steps shift; A and B unchanged; merged timeline reordered; C's preheat dropped state unchanged | READY (ADR 0009 r10, ADR 0010 s7) |
 | LIV-15 | Recompute over DST | DST-11 | covered above | PROPOSED |
 | LIV-16 | Recompute never moves a step into the past | late shift onto a step whose planned start is before now | planned start >= now for every unstarted step | READY |
 
@@ -430,8 +430,8 @@ Each item names what is unclear, which cases depend on it, and the value or beha
 | AMB-06 | Exact meaning of "runs alongside": the PRD example (07:45 start, 30 min) is only consistent with "ends when the anchor step, Bake covered, starts". The PRD prose says "Runs alongside the end of the cold ferment" | SCH-01, SCH-05, MUL-02 | preheat ends when Bake, covered starts | No |
 | AMB-07 | Quiet-hour window: inclusive start and exclusive end? Does it apply to heads-ups and fold reminders or only step starts? Evaluated in which zone after a zone change? Meaning of start = end | QH-05 to QH-07, QH-11, QH-13, SCH-12 | start inclusive, end exclusive, step starts only, current device zone | QH-07, QH-11 |
 | AMB-08 | "Earliest possible ready time": is it now plus the total at the chosen durations (30 h 55 min), or at the minimum durations (26 h 40 min)? With multi-recipe, is it driven by the slot-1 recipes? | SCH-15, SCH-17, MUL-15 | chosen durations | SCH-17 |
-| AMB-09 | Kitchen-temperature lookup table, reference temperature behaviour with a user-set slider value, whether cold ferment is affected | TMP-09, TMP-10 | table not defined (A6, Chris Q7) | Yes, all exact values |
-| AMB-10 | Multi-recipe: slot ordering and tie-break; where the remainder loaves go; whether a single item at scale 2 can split across slots; merging preheat; slot length for mixed recipes; no reheat gap (A4, Chris Q8) | MUL-01 to MUL-17, LIV-14 | greedy fill in input order, remainder last, slot length = covered + uncovered of the longest recipe in the slot, one merged preheat, no gap | Yes if Chris asks for a reheat gap or different ready-time target |
+| AMB-09 | Kitchen-temperature lookup table, reference temperature behaviour with a user-set slider value, whether cold ferment is affected | TMP-09, TMP-10 | RESOLVED by ADR 0008 (B2): `1.09^(24-T)` table, user slider wins, cold ferment never adjusted | Only if Chris retunes the table (data change) |
+| AMB-10 | Multi-recipe: slot ordering and tie-break; where the remainder loaves go; whether a single item at scale 2 can split across slots; merging preheat; slot length for mixed recipes; no reheat gap (A4, Chris Q8) | MUL-01 to MUL-17, LIV-14 | RESOLVED by ADR 0009 (B1, B7): greedy fill in input order, remainder last, slot length = longest oven phase in the slot, one merged preheat, no reheat gap, last batch defines ready time, items may split across slots | Only if Chris asks for a reheat gap later (a Settings value, default 0) |
 | AMB-11 | Live recompute policy: shift remaining steps by actual end minus planned end (early completions pull the ready time earlier?) or absorb into the cold-ferment range to hold the ready time? Out-of-order done | LIV-02, LIV-04, LIV-09, LIV-10, LIV-13 | pure shift, both directions | LIV-09, LIV-10 |
 | AMB-12 | Unit definitions: US cup (236.588 ml) vs metric cup (250 ml); tbsp and tsp as 1/16 and 1/48 cup via gramsPerCup; 1 ml of water = 1 g by default; display precision for oz (1 dp?) and cups (nearest 1/4?) | UNT-06, UNT-09 to UNT-13, UNT-16, RCP-11 | US ratios via gramsPerCup; water 1 g/ml; oz to 1 dp | UNT-06 display only |
 | AMB-13 | Scaling: is the target dough weight per loaf or per batch, and is the base weight the sum of lines or the stored `doughWeightG`? Must rounded amounts add up to the target (SCL-06 sums to 1001 g)? What happens to amounts below 0.5 g? | SCL-05, SCL-06 | not decided | Yes |
@@ -444,7 +444,7 @@ Each item names what is unclear, which cases depend on it, and the value or beha
 
 ## 14. QA-02 status after the ADRs (authoritative)
 
-Statuses: **READY** = exact value decided by an ADR or arithmetic, automated and gating. **PROVISIONAL** = value follows ADR 0008/0009 (AMB-09, AMB-10, pending Chris); automated, but a change request from Chris is a data change. **MOVED** = not a core function; belongs to the repository or UI layer. **GAP** = core-api.md is silent, test written leniently or left as todo (see section 15).
+Statuses: **READY** = exact value decided by an ADR or arithmetic, automated and gating. (No case is PROVISIONAL any more: Chris's answers of 2026-11-26 settled AMB-09 and AMB-10 through ADR 0008 and 0009. A later retune of the temperature table is a data change.) **MOVED** = not a core function; belongs to the repository or UI layer. **GAP** = core-api.md is silent, test written leniently or left as todo (see section 15).
 
 Files: U = `units.test.ts`, R = `recipe.test.ts`, C = `cost.test.ts`, S = `schedule.test.ts`, D = `dst.test.ts`, Q = `quiet-hours.test.ts`, T = `temperature.test.ts`, M = `multi-recipe.test.ts` (skipped unless `RUN_CO03=1`), L = `recompute.test.ts` (same flag).
 
@@ -485,20 +485,20 @@ Files: U = `units.test.ts`, R = `recipe.test.ts`, C = `cost.test.ts`, S = `sched
 | QH-11 | READY | ADR 0010 s5 | heads-ups not checked | Q |
 | QH-13 | READY | ADR 0010 s5 | warnings use the zone passed; London judges the same plan differently | Q |
 | TMP-01 to TMP-08 | READY | ADR 0008 | properties plus exact rows | T |
-| TMP-09, TMP-10 (AMB-09) | **PROVISIONAL** | ADR 0008 | 21 C -> 470 min; 27 C -> 300 (clamped from 275); 18 C -> 480 (605); user slider wins | T |
-| MUL-01 to MUL-09, MUL-11, MUL-13 to MUL-16 (AMB-10) | **PROVISIONAL** | ADR 0009 | tables in section 9; slot indexes 1-based, keys `:s<slot>`; needs CO-03 | M |
-| MUL-04, MUL-05 | PROVISIONAL (single slot, cap >= loaves) | ADR 0009 | one slot, identical to single-loaf plans | M |
-| MUL-12 | PROVISIONAL | core-api | capacity 0, -1, 1.5: throws or `invalid` | M |
+| TMP-09, TMP-10 (AMB-09) | READY | ADR 0008 (B2) | 21 C -> 470 min; 27 C -> 300 (clamped from 275); 18 C -> 480 (605); user slider wins | T |
+| MUL-01 to MUL-09, MUL-11, MUL-13 to MUL-16 (AMB-10) | READY | ADR 0009 (B1, B7) | tables in section 9; slot indexes 1-based, keys `:s<slot>`; needs CO-03 | M |
+| MUL-04, MUL-05 | READY (single slot, cap >= loaves) | ADR 0009 r2 | one slot, identical to single-loaf plans | M |
+| MUL-12 | READY | core-api | capacity 0, -1, 1.5: throws or `invalid` | M |
 | MUL-17 | MOVED | ADR 0014 | per-item cost snapshot is persistence | |
 | LIV-01 to LIV-05, LIV-08, LIV-10, LIV-11, LIV-13 (AMB-11) | READY (needs CO-03) | ADR 0010 s7 | pure shift both ways; done twice -> `alreadyDone`; out of order -> inferred done | L |
 | LIV-06, LIV-07 | READY (needs CO-03) | ADR 0010 s5, s7 | late shift moves Shape/Cold into quiet hours; assert through `quietHoursWarnings` on the new plan | L |
 | LIV-09 | READY | ADR 0010 s7 | no hidden absorb; `holdCapacity` covers the explicit button | L |
 | LIV-12 | READY (needs CO-03) | | `shiftedKeys` = exactly the moved keys | L |
-| LIV-14 | PROVISIONAL (AMB-10) | ADR 0009 s10 | only item C shifts | L |
+| LIV-14 | READY (AMB-10) | ADR 0009 r10, ADR 0010 s7 | only item C shifts | L |
 | LIV-16 | GAP | core-api | `RecomputeEvent` has no `now`, so "never into the past" cannot be enforced or tested in core | |
 | New: foldDone, extend, typed errors, holdCapacity | READY (needs CO-03) | ADR 0010 s7 | see L | L |
 
-Counts after QA-02 (rows of section 14 by status, approximate by id group): READY about 105 ids, PROVISIONAL about 30 (TMP-09/10, MUL-*, LIV-14), MOVED 7, GAP 7. Automated: 326 tests, of which 277 run now and 49 are gated behind `RUN_CO03=1` (multi-recipe 30, recompute 19).
+Counts after QA-02 (rows of section 14 by status, approximate by id group): READY about 123 ids (the 18 former PROVISIONAL ids are now READY: TMP-09, TMP-10, MUL-01 to MUL-09, MUL-11 to MUL-16, LIV-14), PROVISIONAL 0, MOVED 7, GAP 7. Automated: 326 tests, of which 277 run now and 49 are gated behind `RUN_CO03=1` (multi-recipe 30, recompute 19).
 
 ## 15. Contract issues found in core-api.md (QA-02)
 

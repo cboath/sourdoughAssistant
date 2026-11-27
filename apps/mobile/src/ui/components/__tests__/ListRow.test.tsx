@@ -60,7 +60,7 @@ describe('Chip', () => {
     await renderWithTheme(
       <Chip variant="input" label="Rye" onPress={() => undefined} onRemove={onRemove} />,
     );
-    await fireEvent.press(screen.getByRole('button', { name: 'Remove Rye' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Remove tag Rye' }));
     expect(onRemove).toHaveBeenCalled();
   });
 });

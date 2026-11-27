@@ -1,15 +1,19 @@
 import { Platform, Pressable, View } from 'react-native';
+import { useScreenMargin } from '../hooks/useScreenMargin';
 import { useTheme } from '../theme';
 import { Text } from './Text';
 
 export interface SectionHeaderProps {
   title: string;
+  /** Plain trailing text ( "3 prices", "×2.03" ). */
+  trailingText?: string;
   actionLabel?: string;
   onAction?: () => void;
 }
 
-export function SectionHeader({ title, actionLabel, onAction }: SectionHeaderProps) {
-  const { space, layout, size } = useTheme();
+export function SectionHeader({ title, trailingText, actionLabel, onAction }: SectionHeaderProps) {
+  const { space, size } = useTheme();
+  const margin = useScreenMargin();
   const ios = Platform.OS === 'ios';
   return (
     <View
@@ -17,7 +21,8 @@ export function SectionHeader({ title, actionLabel, onAction }: SectionHeaderPro
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: layout.screenMargin,
+        paddingLeft: margin.left,
+        paddingRight: margin.right,
         paddingTop: space.lg,
         paddingBottom: space.xs,
       }}
@@ -30,6 +35,11 @@ export function SectionHeader({ title, actionLabel, onAction }: SectionHeaderPro
       >
         {title}
       </Text>
+      {trailingText && !actionLabel ? (
+        <Text variant="footnote" color="textSecondary">
+          {trailingText}
+        </Text>
+      ) : null}
       {actionLabel && onAction ? (
         <Pressable
           accessibilityRole="button"

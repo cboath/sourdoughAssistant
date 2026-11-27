@@ -76,7 +76,7 @@ The files are untrusted input (SEC-01 and SEC-02).
      - Otherwise, if `locale.currency` differs from the device currency, set `settings.currency_override = locale.currency`.
      - The app's currency resolver (`src/lib/locale.ts`) is `currency_override ?? device currency`. It's used for formatting and for new cost snapshots, and old bake snapshots keep their own `currencyCode`.
      - The preview banner says "Prices in this backup are in EUR and will stay in EUR". Settings, Cost shows "Currency: EUR (from backup)" read-only.
-     - There's still no currency picker in v1 (A5). Clearing the override is a v1.1 item, together with the picker.
+     - There's still no currency picker in v1 (plan A5). Clearing the override is a v1.1 item, together with the picker.
    - `app_meta` is untouched by a restore except `lastRestoreSafetyAt`, which step 7 sets when it writes the safety copy.
 9. After commit: invalidate all queries, re-hydrate the settings store, and run `reconcileNotifications({ mode: 'rebuild' })`. Steps of active bakes that are already in the past aren't notified.
 
@@ -98,6 +98,7 @@ The files are untrusted input (SEC-01 and SEC-02).
 }
 ```
 
+- **Prices are optional in a recipe file.** The export's "Include prices" option is **off by default** (decided, `docs/open-questions.md` C5), and in that case `pantry.price` is omitted.
 - **Import creates new UUIDs** to avoid collisions. Step anchors use the file-local `ref`.
 - **Pantry matching:** match by case-insensitive trimmed name among non-deleted items. If there's no match, create the pantry item. Its price is included only if the currency matches the device currency, otherwise it's left unpriced. The import preview shows which items are new.
 - The validation, sanitizing and Zod pipeline are the same as for a full backup. The size cap is **1 MB**.
